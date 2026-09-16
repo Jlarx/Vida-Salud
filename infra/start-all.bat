@@ -9,9 +9,6 @@ start "Report" cmd /k "cd ms-vidasalud-report && .\mvnw.cmd spring-boot:run"
 start "Notify" cmd /k "cd ms-vidasalud-notify && .\mvnw.cmd spring-boot:run"
 
 timeout /t 5 /nobreak >nul
-start "BFF Gateway" cmd /k "cd ms-vidasalud-bff && .\mvnw.cmd spring-boot:run"
-
-timeout /t 5 /nobreak >nul
 start "Frontend" cmd /k "cd frontend && npm run dev"
 
 :: .\start-all.bat para correrlo en la terminal

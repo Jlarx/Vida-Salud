@@ -5,8 +5,12 @@ import { msalConfig, loginRequest } from './authConfig';
 const msalInstance = new PublicClientApplication(msalConfig);
 await msalInstance.initialize();
 
+// Cuando configures tu AWS API Gateway en el laboratorio, reemplaza esta URL
+// por el 'Invoke URL' que te entregue Amazon (Ejemplo: https://xyz123.execute-api.us-east-1.amazonaws.com/prod)
+const API_BASE_URL = 'http://REEMPLAZAR_POR_TU_AWS_API_GATEWAY_URL';
+
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8080/api' // Cambiar según la API Gateway luego
+    baseURL: API_BASE_URL
 });
 
 apiClient.interceptors.request.use(async (config) => {

@@ -26,11 +26,10 @@ El repositorio centraliza tanto el frontend como el backend, segmentados de la s
   * Autenticación segura y fluida usando `@azure/msal-react` (Flujo OAuth2.0 con Azure).
   * Renderizado condicional dinámico basado en los roles extraídos del JWT (Claims).
 
-### 🛡️ API Gateway (BFF)
-* **`/ms-vidasalud-bff`**: Puerta de entrada unificada (Backend For Frontend).
-  * Construido con **Spring Cloud Gateway (WebFlux)**.
-  * Valida la firma y vigencia del Token JWT emitido por Microsoft.
-  * Aplica **Autorización por Roles (RBAC)** de forma reactiva antes de enrutar el tráfico (ej. Restringiendo `/api/audit` solo al rol `ADMIN`).
+### 🛡️ API Gateway (AWS)
+* La arquitectura utiliza **AWS API Gateway** como servicio administrado en la nube.
+  * Valida la firma y enruta el tráfico directamente a los microservicios desplegados en **EC2**.
+  * La seguridad de los JWT y control de roles ha sido delegada a cada microservicio individual.
 
 ### ⚙️ Microservicios Internos (Spring Boot)
 Independencia total de datos implementando el patrón *Database-per-service*.
@@ -64,7 +63,7 @@ La infraestructura local está orquestada con **Docker Compose** para garantizar
    ```
 3. **¿Qué sucede al ejecutarlo?**
    * Docker levantará 5 bases de datos de PostgreSQL independientes en el puerto `5432`.
-   * Se compilarán e iniciarán los 5 microservicios de Spring Boot.
+   * Se compilarán e iniciarán los microservicios de Spring Boot.
    * Se abrirá automáticamente la aplicación web React en `http://localhost:5173`.
 
 ---
@@ -72,9 +71,9 @@ La infraestructura local está orquestada con **Docker Compose** para garantizar
 ## 🔐 Seguridad y Autenticación
 Este sistema implementa el modelo **Zero Trust**. 
 1. El usuario inicia sesión mediante **Microsoft Azure Entra ID**.
-2. React adjunta el `Bearer Token` en cada petición web dirigida al Gateway.
-3. El **API Gateway (BFF)** valida criptográficamente el token sin conectarse a la base de datos de usuarios (solo JWT).
-4. El sistema restringe endpoints específicos dependiendo de los *App Roles* del usuario (`ADMIN`, `OPERADOR`, `CLIENTE`, `AUDITOR`).
+2. React adjunta el `Bearer Token` en cada petición web dirigida al AWS API Gateway.
+3. El **API Gateway** redirige el tráfico al microservicio correspondiente.
+4. Cada microservicio de **Spring Boot** valida criptográficamente el JWT con Azure y aplica las reglas de autorización (ej. `ADMIN`, `OPERADOR`, `CLIENTE`).
 
 <br/>
 <div align="center">

@@ -23,17 +23,13 @@ public class JwtRoleConverter implements Converter<Jwt, AbstractAuthenticationTo
     }
 
     private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-        // En Azure AD, los roles vienen en el claim "roles" como un arreglo
         List<String> roles = jwt.getClaimAsStringList("roles");
         if (roles == null || roles.isEmpty()) {
             return Collections.emptyList();
         }
 
         return roles.stream()
-                .map(role -> {
-                    // Mapeo seguro al estándar de Spring "ROLE_..."
-                    return new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
-                })
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
                 .collect(Collectors.toList());
     }
 }
