@@ -1,0 +1,37 @@
+# Catalogo
+# Obtiene la lista de todas las prestaciones médicas disponibles
+GET  http://localhost:8080/api/catalog/prestaciones
+# Registra una nueva prestación médica en el catálogo
+POST http://localhost:8080/api/catalog/prestaciones
+{
+    "nombre": "Consulta Médica General"
+}
+# Obtiene la lista de todos los boxes (consultorios)
+GET  http://localhost:8080/api/catalog/boxes
+// Registra un nuevo box indicando su número y cupos de atención
+POST http://localhost:8080/api/catalog/boxes
+{
+    "numero": "101",
+    "numero": "1",
+    "cuposDisponibles": 5
+}
+
+
+# Endpoints 
+# Lista todas las atenciones médicas agendadas
+GET  http://localhost:8080/api/appointments/atenciones
+# Crea (agenda) una nueva atención vinculando un paciente, prestación y box
+POST http://localhost:8080/api/appointments/atenciones
+{ 
+    "pacienteEmail": "paciente@correo.com",
+    "prestacionId": 1,
+    "boxId": 1
+}
+# Actualiza el estado de una atención específica (ej: de SOLICITADA a CONFIRMADA)
+PUT  http://localhost:8080/api/appointments/atenciones/1/estado?estado=CONFIRMADA&usuario=admin@correo.com
+estado  (SOLICITADA, CONFIRMADA, EN_ESPERA, EN_ATENCION, CERRADA, CANCELADA)
+
+
+# Endpoints Auditoría
+# Muestra el historial de auditoría (quién cambió el estado de qué atención y cuándo)
+GET  http://localhost:8080/api/audit/auditorias

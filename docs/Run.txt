@@ -1,0 +1,21 @@
+COMO ARRANCAR TODO EL PROYECTO DE UNA SOLA VEZ
+==============================================
+
+He creado un script llamado "start-all.bat" en la raíz de tu proyecto para facilitarte la vida. 
+Este script se encarga de levantar toda tu infraestructura y los 6 microservicios automáticamente.
+
+PASOS:
+1. Abre tu terminal o explorador de archivos.
+2. Navega a la carpeta C:\Users\johnl\OneDrive\Desktop\VidaSalud
+3. Haz doble clic en el archivo "start-all.bat" (o ejecútalo escribiendo .\start-all.bat en la terminal).
+
+¿QUÉ HACE ESTE SCRIPT?
+1. Ejecuta "docker-compose up -d" silenciosamente en el fondo para levantar PostgreSQL (con tus 5 bases de datos), Kafka, Zookeeper y RabbitMQ.
+2. Espera 15 segundos para darle tiempo a la base de datos de iniciar correctamente.
+3. Abre 5 ventanas negras de terminal (una para cada microservicio backend) y ejecuta el comando de Spring Boot para encenderlos.
+4. Espera otros 10 segundos para que los microservicios terminen de levantar.
+5. Abre la última ventana para encender el "ms-vidasalud-bff" (El Gateway), asegurándose de que cuando arranque, ya existan los demás servicios a los cuales debe enrutar.
+
+PARA DETENER TODO:
+- Cierra las 6 ventanas negras de los microservicios.
+- Ejecuta "docker-compose down" en tu terminal principal para apagar la base de datos y Kafka.
