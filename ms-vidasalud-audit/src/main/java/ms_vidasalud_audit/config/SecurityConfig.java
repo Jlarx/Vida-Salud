@@ -23,7 +23,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
                 // Auditoría requiere Rol de Admin o Auditor
-                .requestMatchers("/api/audit/**").hasAnyRole("ADMIN", "AUDITOR")
+                .requestMatchers("/api/audit/**").hasAnyRole("ADMINISTRADOR", "AUDITOR")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

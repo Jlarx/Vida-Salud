@@ -22,7 +22,7 @@ public class SecurityConfig {
             .cors(cors -> cors.disable()) // CORS lo manejará AWS API Gateway
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/catalog/**").hasAnyRole("ADMIN", "OPERADOR", "CLIENTE")
+                .requestMatchers("/api/catalog/**").hasRole("ADMINISTRADOR")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/catalogo")
+@RequestMapping("/api/catalog")
 @PreAuthorize("hasRole('ADMINISTRADOR')") // Solo Administradores pueden gestionar el catálogo
 public class CatalogoController {
 
