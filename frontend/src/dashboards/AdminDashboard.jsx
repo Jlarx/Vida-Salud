@@ -11,6 +11,7 @@ export default function AdminDashboard() {
       setPrestaciones(res.data);
     } catch (error) {
       console.error("Error fetching admin data", error);
+      alert("Error al cargar datos: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -26,6 +27,7 @@ export default function AdminDashboard() {
       fetchData();
     } catch (error) {
       console.error("Error creating prestacion", error);
+      alert("Error al guardar: " + (error.response?.data?.message || error.message));
     }
   };
 
