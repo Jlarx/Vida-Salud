@@ -11,11 +11,9 @@ public class AuditoriaAtencion {
     
     private Long atencionId;
     
-    @Enumerated(EnumType.STRING)
-    private EstadoAtencion estadoAnterior;
+    private String estadoAnterior;
     
-    @Enumerated(EnumType.STRING)
-    private EstadoAtencion estadoNuevo;
+    private String estadoNuevo;
     
     private LocalDateTime fechaCambio;
     private String usuarioEmail;
@@ -30,10 +28,10 @@ public class AuditoriaAtencion {
     public void setId(Long id) { this.id = id; }
     public Long getAtencionId() { return atencionId; }
     public void setAtencionId(Long atencionId) { this.atencionId = atencionId; }
-    public EstadoAtencion getEstadoAnterior() { return estadoAnterior; }
-    public void setEstadoAnterior(EstadoAtencion estadoAnterior) { this.estadoAnterior = estadoAnterior; }
-    public EstadoAtencion getEstadoNuevo() { return estadoNuevo; }
-    public void setEstadoNuevo(EstadoAtencion estadoNuevo) { this.estadoNuevo = estadoNuevo; }
+    public String getEstadoAnterior() { return estadoAnterior; }
+    public void setEstadoAnterior(String estadoAnterior) { this.estadoAnterior = estadoAnterior; }
+    public String getEstadoNuevo() { return estadoNuevo; }
+    public void setEstadoNuevo(String estadoNuevo) { this.estadoNuevo = estadoNuevo; }
     public LocalDateTime getFechaCambio() { return fechaCambio; }
     public void setFechaCambio(LocalDateTime fechaCambio) { this.fechaCambio = fechaCambio; }
     public String getUsuarioEmail() { return usuarioEmail; }
