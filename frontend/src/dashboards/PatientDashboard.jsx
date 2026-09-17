@@ -8,14 +8,19 @@ export default function PatientDashboard() {
 
   const fetchData = async () => {
     try {
-      const [resAtenciones, resPrestaciones] = await Promise.all([
-        apiClient.get('/appointments'),
-        apiClient.get('/catalog/prestaciones')
-      ]);
+      const resAtenciones = await apiClient.get('/appointments');
       setAtenciones(resAtenciones.data);
+    } catch (error) {
+      console.error("Error fetching appointments", error);
+      alert("Error al cargar citas: " + (error.response?.data?.message || error.message));
+    }
+    
+    try {
+      const resPrestaciones = await apiClient.get('/catalog/prestaciones');
       setPrestaciones(resPrestaciones.data);
     } catch (error) {
-      console.error("Error fetching patient data", error);
+      console.error("Error fetching catalog", error);
+      alert("Error al cargar servicios disponibles: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -28,8 +33,10 @@ export default function PatientDashboard() {
     try {
       await apiClient.post('/appointments', newAtencion);
       fetchData();
+      alert("¡Cita agendada con éxito!");
     } catch (error) {
       console.error("Error creating appointment", error);
+      alert("Error al agendar cita: " + (error.response?.data?.message || error.message));
     }
   };
 

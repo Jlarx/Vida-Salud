@@ -4,6 +4,8 @@ import apiClient from '../apiClient';
 export default function AdminDashboard() {
   const [prestaciones, setPrestaciones] = useState([]);
   const [newPrestacion, setNewPrestacion] = useState({ nombre: '', descripcion: '' });
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ nombre: '', descripcion: '' });
 
   const fetchData = async () => {
     try {
@@ -28,6 +30,31 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Error creating prestacion", error);
       alert("Error al guardar: " + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Estás seguro de eliminar este servicio?")) return;
+    try {
+      await apiClient.delete(`/catalog/prestaciones/${id}`);
+      fetchData();
+    } catch (error) {
+      alert("Error al eliminar: " + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleEditClick = (p) => {
+    setEditingId(p.id);
+    setEditForm({ nombre: p.nombre, descripcion: p.descripcion });
+  };
+
+  const handleUpdate = async (id) => {
+    try {
+      await apiClient.put(`/catalog/prestaciones/${id}`, editForm);
+      setEditingId(null);
+      fetchData();
+    } catch (error) {
+      alert("Error al actualizar: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -66,14 +93,36 @@ export default function AdminDashboard() {
               <th>ID</th>
               <th>Nombre del Servicio</th>
               <th>Descripción</th>
+              <th style={{ textAlign: 'right' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {prestaciones.length > 0 ? prestaciones.map(p => (
               <tr key={p.id}>
                 <td><strong>#{p.id}</strong></td>
-                <td style={{ fontWeight: 500 }}>{p.nombre}</td>
-                <td>{p.descripcion}</td>
+                <td style={{ fontWeight: 500 }}>
+                  {editingId === p.id ? (
+                    <input type="text" className="clean-input" style={{ margin: 0 }} value={editForm.nombre} onChange={e => setEditForm({...editForm, nombre: e.target.value})} />
+                  ) : p.nombre}
+                </td>
+                <td>
+                  {editingId === p.id ? (
+                    <input type="text" className="clean-input" style={{ margin: 0 }} value={editForm.descripcion} onChange={e => setEditForm({...editForm, descripcion: e.target.value})} />
+                  ) : p.descripcion}
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  {editingId === p.id ? (
+                    <>
+                      <button className="btn-action" style={{ background: '#7fba00', padding: '5px 10px', fontSize: '12px', marginRight: '5px' }} onClick={() => handleUpdate(p.id)}>Guardar</button>
+                      <button className="btn-action" style={{ background: '#666', padding: '5px 10px', fontSize: '12px' }} onClick={() => setEditingId(null)}>Cancelar</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn-action" style={{ background: '#ffb900', color: '#333', padding: '5px 10px', fontSize: '12px', marginRight: '5px' }} onClick={() => handleEditClick(p)}>Editar</button>
+                      <button className="btn-action" style={{ background: '#f25022', padding: '5px 10px', fontSize: '12px' }} onClick={() => handleDelete(p.id)}>Eliminar</button>
+                    </>
+                  )}
+                </td>
               </tr>
             )) : (
               <tr><td colSpan="3" style={{ textAlign: 'center', color: '#7f8c8d' }}>No hay servicios registrados</td></tr>

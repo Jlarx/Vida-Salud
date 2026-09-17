@@ -19,8 +19,8 @@ export default function Login() {
   // Determinar pestaña activa inicial por defecto
   if (!activeMenu && roles.length > 0) {
     if (roles.includes('Administrador')) setActiveMenu('Admin');
-    else if (roles.includes('Recepcionista')) setActiveMenu('Recepcion');
-    else if (roles.includes('Paciente')) setActiveMenu('Paciente');
+    else if (roles.includes('Operador')) setActiveMenu('Recepcion');
+    else if (roles.includes('Cliente')) setActiveMenu('Paciente');
     else if (roles.includes('Auditor')) setActiveMenu('Auditoria');
   }
 
@@ -71,7 +71,7 @@ export default function Login() {
                   Servicios Médicos
                 </div>
               )}
-              {roles.includes('Recepcionista') && (
+              {(roles.includes('Operador') || roles.includes('Administrador')) && (
                 <div 
                   className={`menu-item ${activeMenu === 'Recepcion' ? 'active' : ''}`}
                   onClick={() => setActiveMenu('Recepcion')}
@@ -79,7 +79,7 @@ export default function Login() {
                   Gestión de Citas
                 </div>
               )}
-              {roles.includes('Paciente') && (
+              {(roles.includes('Cliente') || roles.includes('Administrador')) && (
                 <div 
                   className={`menu-item ${activeMenu === 'Paciente' ? 'active' : ''}`}
                   onClick={() => setActiveMenu('Paciente')}
@@ -87,7 +87,7 @@ export default function Login() {
                   Mis Citas
                 </div>
               )}
-              {roles.includes('Auditor') && (
+              {(roles.includes('Auditor') || roles.includes('Administrador')) && (
                 <div 
                   className={`menu-item ${activeMenu === 'Auditoria' ? 'active' : ''}`}
                   onClick={() => setActiveMenu('Auditoria')}
@@ -123,9 +123,9 @@ export default function Login() {
             {/* Dashboard Views */}
             <div className="dashboard-view">
               {activeMenu === 'Admin' && roles.includes('Administrador') && <AdminDashboard />}
-              {activeMenu === 'Recepcion' && roles.includes('Recepcionista') && <ReceptionDashboard />}
-              {activeMenu === 'Paciente' && roles.includes('Paciente') && <PatientDashboard />}
-              {activeMenu === 'Auditoria' && roles.includes('Auditor') && <AuditDashboard />}
+              {activeMenu === 'Recepcion' && (roles.includes('Operador') || roles.includes('Administrador')) && <ReceptionDashboard />}
+              {activeMenu === 'Paciente' && (roles.includes('Cliente') || roles.includes('Administrador')) && <PatientDashboard />}
+              {activeMenu === 'Auditoria' && (roles.includes('Auditor') || roles.includes('Administrador')) && <AuditDashboard />}
               
               {roles.length === 0 && (
                 <div className="card-white">

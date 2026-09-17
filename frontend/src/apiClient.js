@@ -19,7 +19,7 @@ apiClient.interceptors.request.use(async (config) => {
 
         if (activeAccount) {
             const tokenResponse = await msalInstance.acquireTokenSilent({
-                ...loginRequest,
+                scopes: ["api://09d40f2a-29ea-43c0-8d74-b89ba284c778/.default"],
                 account: activeAccount
             });
 
@@ -28,6 +28,7 @@ apiClient.interceptors.request.use(async (config) => {
         }
     } catch (error) {
         console.error("Error al obtener token silencioso:", error);
+        alert("Error de MSAL al pedir token: " + error.message);
         // Si el token expira o falla silenciosamente, el usuario debería volver a hacer login
     }
 

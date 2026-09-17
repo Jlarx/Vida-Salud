@@ -11,7 +11,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/catalog")
-@PreAuthorize("hasRole('ADMINISTRADOR')") // Solo Administradores pueden gestionar el catálogo
 public class CatalogoController {
 
     private final BoxRepository boxRepository;
@@ -28,6 +27,7 @@ public class CatalogoController {
     }
 
     @PostMapping("/boxes")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public Box createBox(@RequestBody Box box) {
         return boxRepository.save(box);
     }
@@ -38,7 +38,24 @@ public class CatalogoController {
     }
 
     @PostMapping("/prestaciones")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public Prestacion createPrestacion(@RequestBody Prestacion prestacion) {
         return prestacionRepository.save(prestacion);
+    }
+
+    @PutMapping("/prestaciones/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public Prestacion updatePrestacion(@PathVariable Long id, @RequestBody Prestacion prestacionActualizada) {
+        return prestacionRepository.findById(id).map(prestacion -> {
+            prestacion.setNombre(prestacionActualizada.getNombre());
+            prestacion.setDescripcion(prestacionActualizada.getDescripcion());
+            return prestacionRepository.save(prestacion);
+        }).orElseThrow(() -> new RuntimeException("Prestación no encontrada"));
+    }
+
+    @DeleteMapping("/prestaciones/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public void deletePrestacion(@PathVariable Long id) {
+        prestacionRepository.deleteById(id);
     }
 }

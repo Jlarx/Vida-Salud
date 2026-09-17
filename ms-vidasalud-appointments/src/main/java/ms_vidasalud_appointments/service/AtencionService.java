@@ -6,13 +6,19 @@ import ms_vidasalud_appointments.repository.AtencionRepository;
 // import ms_vidasalud_appointments.repository.BoxRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.kafka.core.KafkaTemplate;
+import ms_vidasalud_appointments.dto.AuditoriaEvent;
+import java.time.LocalDateTime;
 
 @Service
 public class AtencionService {
     
     private final AtencionRepository atencionRepository;
-    public AtencionService(AtencionRepository atencionRepository) {
+    private final KafkaTemplate<String, AuditoriaEvent> kafkaTemplate;
+
+    public AtencionService(AtencionRepository atencionRepository, KafkaTemplate<String, AuditoriaEvent> kafkaTemplate) {
         this.atencionRepository = atencionRepository;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @Transactional
@@ -43,7 +49,14 @@ public class AtencionService {
         Atencion guardada = atencionRepository.save(atencion);
 
         // Registro de Auditoría
-        // TODO: Enviar evento a Kafka en lugar de guardar en BD síncronamente
+        AuditoriaEvent event = new AuditoriaEvent(
+                guardada.getId(),
+                usuarioEmail,
+                estadoAnterior.name(),
+                nuevoEstado.name(),
+                LocalDateTime.now()
+        );
+        kafkaTemplate.send("vidasalud-audit-events", event);
 
         return guardada;
     }

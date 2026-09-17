@@ -13,6 +13,6 @@ export const msalConfig = {
 
 // Scopes required for login
 export const loginRequest = {
-    scopes: ["User.Read"],
+    scopes: ["api://09d40f2a-29ea-43c0-8d74-b89ba284c778/.default"],
     prompt: "select_account"
 };

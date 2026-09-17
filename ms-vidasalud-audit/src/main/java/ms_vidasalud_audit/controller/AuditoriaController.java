@@ -9,7 +9,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/audit")
-@PreAuthorize("hasRole('AUDITOR')") // Solo el rol Auditor puede ver estos datos
+@PreAuthorize("hasAnyRole('AUDITOR', 'ADMINISTRADOR')") // Auditor y Administrador pueden ver estos datos
 public class AuditoriaController {
 
     private final AuditoriaAtencionRepository auditoriaRepository;
