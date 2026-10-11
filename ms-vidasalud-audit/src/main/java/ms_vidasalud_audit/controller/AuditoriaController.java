@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/audit")
+@RequestMapping({"/api/audit", "/audit"})
 @PreAuthorize("hasAnyRole('AUDITOR', 'ADMINISTRADOR')") // Auditor y Administrador pueden ver estos datos
 public class AuditoriaController {
 

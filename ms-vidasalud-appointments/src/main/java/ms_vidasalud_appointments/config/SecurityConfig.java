@@ -28,7 +28,8 @@ public class SecurityConfig {
             }))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/appointments/**").hasAnyRole("ADMINISTRADOR", "RECEPCIONISTA", "PACIENTE")
+                .requestMatchers("/api/rabbitmq/**", "/queues/**", "/exchanges/**").permitAll()
+                .requestMatchers("/api/appointments/**", "/appointments/**").hasAnyRole("ADMINISTRADOR", "RECEPCIONISTA", "PACIENTE")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

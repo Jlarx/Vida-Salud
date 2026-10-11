@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/catalog")
+@RequestMapping({"/api/catalog", "/catalog"})
 public class CatalogoController {
 
     private final BoxRepository boxRepository;

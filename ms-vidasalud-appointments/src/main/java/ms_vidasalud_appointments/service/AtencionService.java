@@ -6,7 +6,7 @@ import ms_vidasalud_appointments.repository.AtencionRepository;
 // import ms_vidasalud_appointments.repository.BoxRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.kafka.core.KafkaTemplate;
+import ms_vidasalud_appointments.messaging.producer.AtencionEventPublisher;
 import ms_vidasalud_appointments.dto.AuditoriaEvent;
 import java.time.LocalDateTime;
 
@@ -14,11 +14,11 @@ import java.time.LocalDateTime;
 public class AtencionService {
     
     private final AtencionRepository atencionRepository;
-    private final KafkaTemplate<String, AuditoriaEvent> kafkaTemplate;
+    private final AtencionEventPublisher eventPublisher;
 
-    public AtencionService(AtencionRepository atencionRepository, KafkaTemplate<String, AuditoriaEvent> kafkaTemplate) {
+    public AtencionService(AtencionRepository atencionRepository, AtencionEventPublisher eventPublisher) {
         this.atencionRepository = atencionRepository;
-        this.kafkaTemplate = kafkaTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -56,7 +56,8 @@ public class AtencionService {
                 nuevoEstado.name(),
                 LocalDateTime.now()
         );
-        kafkaTemplate.send("vidasalud-audit-events", event);
+        eventPublisher.publishAudit(event);
+        eventPublisher.publishNotify(event);
 
         return guardada;
     }

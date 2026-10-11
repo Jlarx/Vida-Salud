@@ -28,8 +28,8 @@ public class SecurityConfig {
             }))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/catalog/**").authenticated()
-                .requestMatchers("/api/catalog/**").hasRole("ADMINISTRADOR")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/catalog/**", "/catalog/**").authenticated()
+                .requestMatchers("/api/catalog/**", "/catalog/**").hasRole("ADMINISTRADOR")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

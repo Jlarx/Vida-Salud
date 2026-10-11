@@ -8,24 +8,24 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.kafka.core.KafkaTemplate;
+import ms_vidasalud_appointments.messaging.producer.AtencionEventPublisher;
 import ms_vidasalud_appointments.dto.AuditoriaEvent;
 import java.time.LocalDateTime;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping({"/api/appointments", "/appointments"})
 public class AtencionController {
 
     private final AtencionRepository atencionRepository;
     private final AtencionService atencionService;
-    private final KafkaTemplate<String, AuditoriaEvent> kafkaTemplate;
+    private final AtencionEventPublisher eventPublisher;
 
-    public AtencionController(AtencionRepository atencionRepository, AtencionService atencionService, KafkaTemplate<String, AuditoriaEvent> kafkaTemplate) {
+    public AtencionController(AtencionRepository atencionRepository, AtencionService atencionService, AtencionEventPublisher eventPublisher) {
         this.atencionRepository = atencionRepository;
         this.atencionService = atencionService;
-        this.kafkaTemplate = kafkaTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     @GetMapping
@@ -51,7 +51,8 @@ public class AtencionController {
                 EstadoAtencion.SOLICITADA.name(),
                 LocalDateTime.now()
         );
-        kafkaTemplate.send("vidasalud-audit-events", event);
+        eventPublisher.publishAudit(event);
+        eventPublisher.publishNotify(event);
 
         return guardada;
     }
