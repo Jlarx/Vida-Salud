@@ -1,0 +1,45 @@
+================================================================================
+ENLACES Y ACCESOS A RABBITMQ (AWS EC2 - VIDASALUD)
+================================================================================
+
+PANEL WEB ADMINISTRATIVO DE RABBITMQ:
+--------------------------------------------------------------------------------
+URL:             http://52.1.200.223:15672
+Usuario:         guest
+Contraseña:      guest
+
+
+PESTAÑAS CLAVE PARA LA EVALUACION:
+--------------------------------------------------------------------------------
+1. Vista General (Overview):
+   http://52.1.200.223:15672/#/
+   - Muestra graficos generales de mensajes por segundo (Publish In / Deliver Out).
+
+2. Colas y Streams (Queues):
+   http://52.1.200.223:15672/#/queues
+   - audit.queue      (Cola durable donde llegan los eventos de auditoria)
+   - notify.queue     (Cola durable para notificaciones)
+   - audit.dlq        (Dead Letter Queue - tolerancia a fallos)
+   - notify.dlq       (Dead Letter Queue para notificaciones)
+
+3. Exchanges:
+   http://52.1.200.223:15672/#/exchanges
+   - audit.exchange        (TopicExchange para enrutar a audit.queue)
+   - notify.exchange       (TopicExchange para enrutar a notify.queue)
+   - deadLetterExchange    (Exchange DLX para redirigir mensajes con error)
+
+
+PUERTO DEL PROTOCOLO AMQP (CONEXION DE MICROSERVICIOS):
+--------------------------------------------------------------------------------
+Host: 52.1.200.223
+Puerto AMQP: 5672
+Usuario: guest
+Clave: guest
+
+
+COMO VER EL TRAFICO EN VIVO:
+--------------------------------------------------------------------------------
+1. Entra a: http://52.1.200.223:15672/#/queues/%2F/audit.queue
+2. Cambia el estado de una cita en el Frontend (localhost:5173).
+3. Mira la grafica de "Message rates": veras el pico en tiempo real de
+   "Incoming" (mensaje que entra) y "Deliver / Ack" (mensaje procesado con ACK manual).

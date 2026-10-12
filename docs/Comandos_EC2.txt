@@ -1,0 +1,71 @@
+================================================================================
+COMANDOS PARA CORRER Y REINICIAR EL PROYECTO EN LA EC2 (AWS)
+Instancia EC2 IP Elastica: 52.1.200.223
+================================================================================
+
+PASO 1: CONECTARSE A LA EC2 Y ASEGURAR MEMORIA SWAP (Solo si se reinicio de cero)
+--------------------------------------------------------------------------------
+sudo fallocate -l 4G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+
+PASO 2: ACTUALIZAR EL CODIGO DESDE GITHUB
+--------------------------------------------------------------------------------
+cd ~/Vida-Salud && git pull origin main
+
+
+PASO 3: LEVANTAR CONTENEDORES DOCKER (POSTGRESQL Y RABBITMQ)
+--------------------------------------------------------------------------------
+docker compose -f infra/docker-compose.yml up -d
+sleep 5
+
+
+PASO 4: DETENER PROCESOS JAVA ANTERIORES (SI ESTABAN CORRIENDO)
+--------------------------------------------------------------------------------
+sudo pkill -f java || true
+
+
+PASO 5: COMPILAR LOS MICROSERVICIOS (UNO A UNO PARA NO SATURAR LA RAM)
+--------------------------------------------------------------------------------
+cd ~/Vida-Salud
+cd ms-vidasalud-catalog && ./mvnw clean package -DskipTests && cd ..
+cd ms-vidasalud-appointments && ./mvnw clean package -DskipTests && cd ..
+cd ms-vidasalud-audit && ./mvnw clean package -DskipTests && cd ..
+cd ms-vidasalud-report && ./mvnw clean package -DskipTests && cd ..
+cd ms-vidasalud-notify && ./mvnw clean package -DskipTests && cd ..
+
+
+PASO 6: INICIAR TODOS LOS MICROSERVICIOS EN SEGUNDO PLANO (-Xmx200m)
+--------------------------------------------------------------------------------
+cd ~/Vida-Salud
+
+nohup java -Xmx200m -jar ms-vidasalud-catalog/target/*.jar > catalog.log 2>&1 &
+sleep 5
+
+nohup java -Xmx200m -jar ms-vidasalud-appointments/target/*.jar > appointments.log 2>&1 &
+sleep 5
+
+nohup java -Xmx200m -jar ms-vidasalud-audit/target/*.jar > audit.log 2>&1 &
+sleep 5
+
+nohup java -Xmx200m -jar ms-vidasalud-report/target/*.jar > report.log 2>&1 &
+sleep 5
+
+nohup java -Xmx200m -jar ms-vidasalud-notify/target/*.jar > notify.log 2>&1 &
+sleep 3
+
+
+PASO 7: COMPROBAR QUE ESTAN TODOS VIVOS Y CORRIENDO
+--------------------------------------------------------------------------------
+ps aux | grep java
+
+(Deberias ver los 5 procesos java activos con sus PIDs).
+
+
+COMANDOS UTILES DE LOGS EN VIVO:
+--------------------------------------------------------------------------------
+- Ver log de Appointments: tail -f ~/Vida-Salud/appointments.log
+- Ver log de Audit:        tail -f ~/Vida-Salud/audit.log
+- Salir del log:           Ctrl + C
