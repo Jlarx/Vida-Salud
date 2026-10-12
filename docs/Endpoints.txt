@@ -1,4 +1,4 @@
-# Catalogo
+# Catalogo.
 # Obtiene la lista de todas las prestaciones médicas disponibles
 GET  http://localhost:8080/api/catalog/prestaciones
 # Registra una nueva prestación médica en el catálogo
