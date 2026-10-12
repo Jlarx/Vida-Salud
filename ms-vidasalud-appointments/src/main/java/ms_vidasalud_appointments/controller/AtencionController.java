@@ -65,4 +65,14 @@ public class AtencionController {
         
         return atencionService.cambiarEstado(id, nuevoEstado, email);
     }
+
+    @PutMapping("/{id}/reagendar")
+    @PreAuthorize("hasAnyRole('OPERADOR', 'ADMINISTRADOR')")
+    public Atencion reagendar(@PathVariable Long id, @RequestParam String nuevaFecha, @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("preferred_username");
+        if (email == null) email = jwt.getSubject();
+
+        LocalDateTime fechaParsed = LocalDateTime.parse(nuevaFecha);
+        return atencionService.reagendarCita(id, fechaParsed, email);
+    }
 }

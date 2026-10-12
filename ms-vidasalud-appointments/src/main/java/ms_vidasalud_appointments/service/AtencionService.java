@@ -61,4 +61,25 @@ public class AtencionService {
 
         return guardada;
     }
+
+    @Transactional
+    public Atencion reagendarCita(Long id, LocalDateTime nuevaFecha, String usuarioEmail) {
+        Atencion atencion = atencionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Atención no encontrada"));
+
+        atencion.setFechaCita(nuevaFecha);
+        Atencion guardada = atencionRepository.save(atencion);
+
+        AuditoriaEvent event = new AuditoriaEvent(
+                guardada.getId(),
+                usuarioEmail,
+                "REAGENDAMIENTO",
+                "Nueva fecha: " + nuevaFecha.toString(),
+                LocalDateTime.now()
+        );
+        eventPublisher.publishAudit(event);
+        eventPublisher.publishNotify(event);
+
+        return guardada;
+    }
 }

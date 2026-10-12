@@ -18,11 +18,16 @@ public class Atencion {
     
     private Long boxId;
     
+    private LocalDateTime fechaCita;
+
     private LocalDateTime fechaCreacion;
 
     @PrePersist
     protected void onCreate() {
         fechaCreacion = LocalDateTime.now();
+        if (fechaCita == null) {
+            fechaCita = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0);
+        }
     }
 
     // Getters y Setters
@@ -36,6 +41,8 @@ public class Atencion {
     public void setPrestacionId(Long prestacionId) { this.prestacionId = prestacionId; }
     public Long getBoxId() { return boxId; }
     public void setBoxId(Long boxId) { this.boxId = boxId; }
+    public LocalDateTime getFechaCita() { return fechaCita; }
+    public void setFechaCita(LocalDateTime fechaCita) { this.fechaCita = fechaCita; }
     public LocalDateTime getFechaCreacion() { return fechaCreacion; }
     public void setFechaCreacion(LocalDateTime fechaCreacion) { this.fechaCreacion = fechaCreacion; }
 }
