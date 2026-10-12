@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@SuppressWarnings("removal")
 public class RabbitMQConfig {
 
     @Value("${rabbitmq.queue.notify}")

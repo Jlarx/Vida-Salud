@@ -28,6 +28,10 @@ public class RabbitAdminService {
         rabbitAdmin.declareExchange(new TopicExchange(exchangeName));
     }
 
+    public void deleteExchange(String exchangeName) {
+        rabbitAdmin.deleteExchange(exchangeName);
+    }
+
     public void createBinding(String queueName, String exchangeName, String routingKey) {
         rabbitAdmin.declareBinding(BindingBuilder
                 .bind(new Queue(queueName, true))

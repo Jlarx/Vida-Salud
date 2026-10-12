@@ -18,21 +18,27 @@ public class RabbitAdminController {
         this.rabbitAdminService = rabbitAdminService;
     }
 
-    @PostMapping({"/queues", "/api/rabbitmq/queues"})
+    @PostMapping({"/queues", "/api/rabbitmq/queues", "/appointments/queues"})
     public ResponseEntity<String> createQueue(@Valid @RequestBody QueueRequestDTO request) {
         rabbitAdminService.createQueue(request.getQueueName());
         return ResponseEntity.status(HttpStatus.CREATED).body("Cola creada: " + request.getQueueName());
     }
 
-    @DeleteMapping({"/queues/{name}", "/api/rabbitmq/queues/{name}"})
+    @DeleteMapping({"/queues/{name}", "/api/rabbitmq/queues/{name}", "/appointments/queues/{name}"})
     public ResponseEntity<String> deleteQueue(@PathVariable String name) {
         rabbitAdminService.deleteQueue(name);
         return ResponseEntity.ok("Cola eliminada: " + name);
     }
 
-    @PostMapping({"/exchanges", "/api/rabbitmq/exchanges"})
+    @PostMapping({"/exchanges", "/api/rabbitmq/exchanges", "/appointments/exchanges"})
     public ResponseEntity<String> createExchange(@Valid @RequestBody ExchangeRequestDTO request) {
         rabbitAdminService.createExchange(request.getExchangeName());
         return ResponseEntity.status(HttpStatus.CREATED).body("Exchange creado: " + request.getExchangeName());
+    }
+
+    @DeleteMapping({"/exchanges/{name}", "/api/rabbitmq/exchanges/{name}", "/appointments/exchanges/{name}"})
+    public ResponseEntity<String> deleteExchange(@PathVariable String name) {
+        rabbitAdminService.deleteExchange(name);
+        return ResponseEntity.ok("Exchange eliminado: " + name);
     }
 }
