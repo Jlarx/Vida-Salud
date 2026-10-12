@@ -1,0 +1,80 @@
+================================================================================
+GUIA RAPIDA DE DEMOSTRACION EN POSTMAN - RUBRICA RABBITMQ (VIDASALUD)
+IP EC2: 52.1.200.223 | Puerto Appointments (Admin): 8082
+Panel RabbitMQ Web: http://52.1.200.223:15672 (User: guest | Pass: guest)
+================================================================================
+
+1. CREAR UNA COLA DINAMICA (POST)
+--------------------------------------------------
+Metodo: POST
+URL:    http://52.1.200.223:8082/queues
+Headers: Content-Type: application/json
+Body (raw -> JSON):
+{
+  "queueName": "cola-evaluacion-duoc"
+}
+
+Respuesta esperada: 
+HTTP 201 Created
+"Cola creada: cola-evaluacion-duoc"
+(Verificar en el panel web de RabbitMQ en la pestaña "Queues" que aparece).
+
+
+2. VALIDACION DE ENTRADA / NOMBRE VACIO (POST - ERROR CONTROLADO)
+--------------------------------------------------
+Metodo: POST
+URL:    http://52.1.200.223:8082/queues
+Headers: Content-Type: application/json
+Body (raw -> JSON):
+{
+  "queueName": ""
+}
+
+Respuesta esperada:
+HTTP 400 Bad Request
+(Demuestra que la API valida con @Valid y @NotBlank para evitar colas vacias).
+
+
+3. ELIMINAR LA COLA CREADA (DELETE)
+--------------------------------------------------
+Metodo: DELETE
+URL:    http://52.1.200.223:8082/queues/cola-evaluacion-duoc
+
+Respuesta esperada:
+HTTP 200 OK
+"Cola eliminada: cola-evaluacion-duoc"
+(Verificar en el panel web de RabbitMQ que desaparece).
+
+
+4. CREAR UN EXCHANGE DINAMICO (POST)
+--------------------------------------------------
+Metodo: POST
+URL:    http://52.1.200.223:8082/exchanges
+Headers: Content-Type: application/json
+Body (raw -> JSON):
+{
+  "exchangeName": "exchange-evaluacion-duoc",
+  "type": "topic"
+}
+
+Respuesta esperada:
+HTTP 201 Created
+"Exchange creado: exchange-evaluacion-duoc"
+(Verificar en el panel web de RabbitMQ en la pestaña "Exchanges").
+
+
+5. ELIMINAR EL EXCHANGE CREADO (DELETE)
+--------------------------------------------------
+Metodo: DELETE
+URL:    http://52.1.200.223:8082/exchanges/exchange-evaluacion-duoc
+
+Respuesta esperada:
+HTTP 200 OK
+"Exchange eliminado: exchange-evaluacion-duoc"
+
+
+================================================================================
+VERIFICACION DEL CONSUMIDOR CON CONFIRMACION MANUAL (ACK) EN LA EC2:
+================================================================================
+Comando para ver en vivo los eventos procesados por el microservicio de auditoria:
+cat ~/Vida-Salud/audit.log | grep "Evento de auditoría" | tail -n 5
