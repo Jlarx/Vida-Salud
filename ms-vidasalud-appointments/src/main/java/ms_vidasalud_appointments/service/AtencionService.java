@@ -35,9 +35,9 @@ public class AtencionService {
             }
         }
         
-        // Validación de secuencia (ejemplo simple)
-        if (nuevoEstado == EstadoAtencion.EN_ATENCION && estadoAnterior != EstadoAtencion.CONFIRMADA && estadoAnterior != EstadoAtencion.EN_ESPERA) {
-            throw new RuntimeException("No se puede pasar a EN_ATENCION si no está CONFIRMADA o EN_ESPERA");
+        // Validación de secuencia: permitir al operador transicionar estados según la dinámica de la clínica
+        if (nuevoEstado == EstadoAtencion.EN_ATENCION && estadoAnterior == EstadoAtencion.CERRADA) {
+            throw new RuntimeException("No se puede reactivar una cita que ya ha sido CERRADA.");
         }
         
         // Liberar cupo al CERRAR o CANCELAR
