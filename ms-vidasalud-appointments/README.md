@@ -12,3 +12,4 @@ Núcleo transaccional para la reserva, reprogramación y seguimiento de atencion
 - **Persistencia**: PostgreSQL (`vidasalud_appointments`).
 - **Seguridad**: Validación JWT de Azure Entra ID con control de roles por método.
 - **Puerto**: `8082`.
+

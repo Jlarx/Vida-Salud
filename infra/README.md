@@ -12,3 +12,4 @@ Orquestación de servicios base en la nube (AWS EC2).
    - `kafka-1` (9092), `kafka-2` (9094), `kafka-3` (9096)
    - Tópicos con 3 particiones y factor de replicación 3 (`vidasalud-citas`, `vidasalud-alertas`).
 4. **Kafka-UI**: Panel de monitoreo web accesible en el puerto **8088**.
+

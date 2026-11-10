@@ -8,3 +8,4 @@ Gestión y emisión de alertas hacia pacientes y personal asistencial.
 - **Cola DLQ**: Enrutamiento a `notify.dlq` si el mensaje no puede ser notificado.
 - **Seguridad**: Validación JWT de Azure Entra ID.
 - **Puerto**: `8085`.
+

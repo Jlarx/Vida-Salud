@@ -9,3 +9,4 @@ Trazabilidad inmutable de cambios de estado y acciones operativas de la platafor
 - **Persistencia**: PostgreSQL (`vidasalud_audit`).
 - **Seguridad**: Validación JWT de Azure Entra ID.
 - **Puerto**: `8083`.
+

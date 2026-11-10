@@ -9,3 +9,4 @@ Generación de indicadores de rendimiento clínico y consolidación estadística
 - **Persistencia**: PostgreSQL (`vidasalud_report`).
 - **Seguridad**: Validación JWT de Azure Entra ID.
 - **Puerto**: `8084`.
+

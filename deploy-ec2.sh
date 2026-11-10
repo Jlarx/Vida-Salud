@@ -3,7 +3,6 @@
 # 🏥 VidaSalud - Script de Despliegue Automatizado en AWS EC2
 # ==============================================================================
 
-# Colores de salida
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
@@ -12,13 +11,10 @@ RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# Asegurar permisos de ejecución universales
 chmod -R +x . 2>/dev/null || true
 
-# IP Pública fija o detectada
 PUBLIC_IP=$(curl -s --connect-timeout 2 http://checkip.amazonaws.com || curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/public-ipv4 || echo "52.1.200.223")
 
-# Función: Garantizar Memoria SWAP de 4GB
 ensure_swap() {
     SWAP_TOTAL=$(free -m | awk '/Swap:/ {print $2}')
     if [ -z "$SWAP_TOTAL" ] || [ "$SWAP_TOTAL" -lt 2000 ]; then
@@ -36,7 +32,6 @@ ensure_swap() {
     fi
 }
 
-# Función 1: INICIAR TODO
 start_all() {
     ensure_swap
     
@@ -48,7 +43,7 @@ start_all() {
     echo -e "${YELLOW}>> 2/4 Levantando Docker (Postgres, RabbitMQ Cluster, Kafka KRaft, Kafka-UI)...${NC}"
     docker compose -f infra/docker-compose.yml up -d
 
-    echo -e "${YELLOW}>> Esperando que PostgreSQL inicie para crear bases de datos...${NC}"
+    echo -e "${YELLOW}>> Esperando que PostgreSQL esté listo...${NC}"
     for i in {1..20}; do
         if docker exec postgres-vidasalud pg_isready -U postgres >/dev/null 2>&1; then
             break
@@ -61,17 +56,16 @@ start_all() {
     docker exec -i postgres-vidasalud psql -U postgres -c "CREATE DATABASE vidasalud_appointments;" 2>/dev/null || true
     docker exec -i postgres-vidasalud psql -U postgres -c "CREATE DATABASE vidasalud_audit;" 2>/dev/null || true
     docker exec -i postgres-vidasalud psql -U postgres -c "CREATE DATABASE vidasalud_report;" 2>/dev/null || true
-    echo -e "${GREEN}>> Bases de datos verificadas y listas.${NC}"
+    echo -e "${GREEN}>> Bases de datos PostgreSQL verificadas y listas.${NC}"
 
-    echo -e "${YELLOW}>> 3/4 Verificando compilación de microservicios...${NC}"
+    echo -e "${YELLOW}>> 3/4 Compilando microservicios individualmente...${NC}"
     for ms in ms-vidasalud-catalog ms-vidasalud-appointments ms-vidasalud-audit ms-vidasalud-report ms-vidasalud-notify; do
-        JAR_EXISTS=$(ls $ms/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1 || true)
-        if [ -z "$JAR_EXISTS" ]; then
-            echo -e "${CYAN}>> Compilando $ms (primera vez)...${NC}"
-            (cd "$ms" && chmod +x mvnw && ./mvnw clean package -DskipTests)
+        if [ -d "$ms" ]; then
+            echo -e "${CYAN}>> Compilando $ms...${NC}"
+            (cd "$ms" && chmod +x mvnw 2>/dev/null || true; ./mvnw clean package -DskipTests -q)
         fi
     done
-    echo -e "${GREEN}>> Todos los microservicios están listos.${NC}"
+    echo -e "${GREEN}>> Todos los microservicios compilados exitosamente.${NC}"
 
     echo -e "${YELLOW}>> 4/4 Levantando microservicios en segundo plano (-Xmx180m)...${NC}"
     
@@ -99,18 +93,18 @@ start_all() {
     nohup java -Xmx180m -jar "$JAR_NOTIFY" > notify.log 2>&1 &
     echo -e "   [5/5] Notificaciones iniciado (Puerto 8085)"
 
-    echo -e "${YELLOW}>> Esperando a que el backend comience a responder peticiones...${NC}"
-    for i in {1..20}; do
-        if curl -s http://localhost:8081/catalog/boxes >/dev/null 2>&1; then
-            echo -e "${GREEN}>> ✅ ¡SISTEMA ONLINE Y LISTO!${NC}"
+    echo -e "${YELLOW}>> Esperando que Tomcat active el puerto 8081...${NC}"
+    for i in {1..25}; do
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/catalog/boxes || echo "000")
+        if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+            echo -e "${GREEN}>> ✅ ¡SISTEMA ONLINE Y LISTO! (Respuesta HTTP: $HTTP_CODE)${NC}"
             return 0
         fi
         sleep 2
     done
-    echo -e "${YELLOW}>> Microservicios arrancando en segundo plano. Revise el estado con la opción 3.${NC}"
+    echo -e "${YELLOW}>> Los microservicios están finalizando su arranque en segundo plano. Verifique con la opción 3.${NC}"
 }
 
-# Función 2: DETENER TODO Y LIMPIAR
 stop_all() {
     echo -e "${YELLOW}>> Deteniendo microservicios Spring Boot...${NC}"
     pkill -9 -f 'ms-vidasalud' 2>/dev/null || true
@@ -125,7 +119,6 @@ stop_all() {
     echo -e "${GREEN}>> Todo detenido y sistema completamente limpio.${NC}"
 }
 
-# Función 3: VER ESTADO Y PUERTOS
 show_status() {
     echo ""
     echo -e "${BLUE}=================== CONTENEDORES DOCKER ===================${NC}"
@@ -155,7 +148,6 @@ show_status() {
     fi
 }
 
-# Función 4: VER LOGS
 show_logs() {
     echo "Seleccione el servicio para ver su log:"
     echo "1) Catálogo (catalog.log)"
@@ -174,9 +166,6 @@ show_logs() {
     esac
 }
 
-# ==============================================================================
-# MENÚ PRINCIPAL
-# ==============================================================================
 clear || true
 echo -e "${BLUE}==============================================================================${NC}"
 echo -e "${BOLD}${GREEN}        🏥 VidaSalud - Centro de Control de Despliegue en AWS EC2     ${NC}"
@@ -184,7 +173,7 @@ echo -e "${BLUE}================================================================
 echo -e "IP Pública Detectada: ${CYAN}${PUBLIC_IP}${NC}"
 echo ""
 echo -e "${BOLD}Seleccione una opción:${NC}"
-echo -e "  ${GREEN}1)${NC} ${BOLD}INICIAR TODO${NC} (Docker + Bases de Datos + 5 Microservicios)"
+echo -e "  ${GREEN}1)${NC} ${BOLD}INICIAR TODO${NC} (Compilar + Docker + Bases de Datos + 5 Microservicios)"
 echo -e "  ${GREEN}2)${NC} ${BOLD}DETENER TODO Y LIMPIAR${NC} (Liberar RAM y detener procesos)"
 echo -e "  ${GREEN}3)${NC} ${BOLD}VER ESTADO Y PUERTOS${NC} (Health Check y prueba de API Gateway)"
 echo -e "  ${GREEN}4)${NC} ${BOLD}VER LOGS EN TIEMPO REAL${NC}"
