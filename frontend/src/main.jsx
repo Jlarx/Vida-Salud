@@ -1,21 +1,26 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
-import { PublicClientApplication } from "@azure/msal-browser";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import './index.css';
 import { MsalProvider } from "@azure/msal-react";
-import { msalConfig } from "./authConfig";
-
-const msalInstance = new PublicClientApplication(msalConfig);
+import { msalInstance } from "./authConfig";
 
 msalInstance.initialize().then(() => {
   msalInstance.handleRedirectPromise()
-    .then(() => {
+    .then((response) => {
+      if (response && response.account) {
+        msalInstance.setActiveAccount(response.account);
+      } else {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0 && !msalInstance.getActiveAccount()) {
+          msalInstance.setActiveAccount(accounts[0]);
+        }
+      }
       renderApp();
     })
     .catch((err) => {
       console.error("MSAL Redirect Error:", err);
-      renderApp(); // Renderiza la app aunque el redirect falle (para no mostrar pantalla en blanco)
+      renderApp();
     });
 
   function renderApp() {

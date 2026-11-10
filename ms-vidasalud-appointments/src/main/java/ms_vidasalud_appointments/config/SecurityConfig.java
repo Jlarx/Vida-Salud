@@ -31,8 +31,9 @@ public class SecurityConfig {
             }))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/rabbitmq/**", "/queues/**", "/exchanges/**").permitAll()
-                .requestMatchers("/api/appointments/**", "/appointments/**").hasAnyRole("ADMINISTRADOR", "OPERADOR", "CLIENTE", "PACIENTE", "RECEPCIONISTA")
+                .requestMatchers("/api/appointments/**", "/appointments/**", "/**").hasAnyRole("ADMINISTRADOR", "OPERADOR", "CLIENTE", "PACIENTE", "RECEPCIONISTA")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

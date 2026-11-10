@@ -23,7 +23,7 @@ public class MsVidasaludAppointmentsApplication {
 			if (atencionRepository.count() == 0) {
 				Atencion a1 = new Atencion();
 				a1.setPacienteEmail("paciente@vidasalud.cl");
-				a1.setEstado(EstadoAtencion.CREADA);
+				a1.setEstado(EstadoAtencion.SOLICITADA);
 				a1.setPrestacionId(1L);
 				a1.setBoxId(1L);
 				a1.setFechaCita(LocalDateTime.now().plusDays(1).withHour(9).withMinute(30).withSecond(0));
@@ -39,7 +39,7 @@ public class MsVidasaludAppointmentsApplication {
 
 				Atencion a3 = new Atencion();
 				a3.setPacienteEmail("juan.perez@email.com");
-				a3.setEstado(EstadoAtencion.ATENDIDA);
+				a3.setEstado(EstadoAtencion.CERRADA);
 				a3.setPrestacionId(1L);
 				a3.setBoxId(1L);
 				a3.setFechaCita(LocalDateTime.now().minusDays(1).withHour(15).withMinute(0).withSecond(0));

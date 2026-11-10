@@ -25,7 +25,7 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.dlq.notify}")
     private String notifyDlqName;
 
-    @Value("${rabbitmq.routing.key.dlq}")
+    @Value("${rabbitmq.routing.key.dlq.notify:notify.dlq.routing.key}")
     private String dlqRoutingKey;
 
     @Bean

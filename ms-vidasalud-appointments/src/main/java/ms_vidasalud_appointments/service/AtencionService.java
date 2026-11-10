@@ -2,8 +2,6 @@ package ms_vidasalud_appointments.service;
 
 import ms_vidasalud_appointments.entity.*;
 import ms_vidasalud_appointments.repository.AtencionRepository;
-// import ms_vidasalud_appointments.repository.AuditoriaAtencionRepository;
-// import ms_vidasalud_appointments.repository.BoxRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ms_vidasalud_appointments.messaging.producer.AtencionEventPublisher;

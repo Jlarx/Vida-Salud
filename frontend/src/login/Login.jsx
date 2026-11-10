@@ -12,17 +12,31 @@ export default function Login() {
   const { instance, accounts } = useMsal();
   const [activeMenu, setActiveMenu] = useState('');
   
-  const activeAccount = accounts.length > 0 ? accounts[0] : null;
-  const roles = activeAccount?.idTokenClaims?.roles || [];
-  const userName = activeAccount?.name || "Usuario";
+  const activeAccount = instance.getActiveAccount() || (accounts.length > 0 ? accounts[0] : null);
+  const rawRoles = activeAccount?.idTokenClaims?.roles || [];
+  const roles = Array.isArray(rawRoles) ? rawRoles : [rawRoles];
+  const userName = activeAccount?.name || activeAccount?.username || "Usuario";
+
+  const hasRole = (...targetRoles) => {
+    return targetRoles.some(target => 
+      roles.some(r => String(r).trim().toLowerCase() === target.toLowerCase())
+    );
+  };
+
+  // Sincronizar cuenta activa en MSAL
+  useEffect(() => {
+    if (activeAccount && !instance.getActiveAccount()) {
+      instance.setActiveAccount(activeAccount);
+    }
+  }, [activeAccount, instance]);
 
   // Determinar pestaña activa inicial por defecto
   useEffect(() => {
     if (!activeMenu && roles.length > 0) {
-      if (roles.includes('Administrador')) setActiveMenu('Admin');
-      else if (roles.includes('Operador')) setActiveMenu('Recepcion');
-      else if (roles.includes('Cliente')) setActiveMenu('Paciente');
-      else if (roles.includes('Auditor')) setActiveMenu('Auditoria');
+      if (hasRole('Administrador')) setActiveMenu('Admin');
+      else if (hasRole('Operador', 'Recepcionista')) setActiveMenu('Recepcion');
+      else if (hasRole('Cliente', 'Paciente')) setActiveMenu('Paciente');
+      else if (hasRole('Auditor')) setActiveMenu('Auditoria');
     }
   }, [roles, activeMenu]);
 
@@ -31,8 +45,13 @@ export default function Login() {
   };
 
   const handleLogout = () => {
-    instance.logoutRedirect({ postLogoutRedirectUri: "/" });
+    instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
   };
+
+  const canAccessAdmin = hasRole('Administrador');
+  const canAccessReception = hasRole('Operador', 'Recepcionista', 'Administrador');
+  const canAccessPatient = hasRole('Cliente', 'Paciente', 'Administrador');
+  const canAccessAudit = hasRole('Auditor', 'Administrador');
 
   return (
     <div className="login-wrapper" style={{ padding: 0, margin: 0, background: 'var(--bg-color)' }}>
@@ -65,7 +84,7 @@ export default function Login() {
             </div>
             
             <div className="sidebar-menu">
-              {roles.includes('Administrador') && (
+              {canAccessAdmin && (
                 <div 
                   className={`menu-item ${activeMenu === 'Admin' ? 'active' : ''}`}
                   onClick={() => setActiveMenu('Admin')}
@@ -73,7 +92,7 @@ export default function Login() {
                   Servicios Médicos
                 </div>
               )}
-              {(roles.includes('Operador') || roles.includes('Administrador')) && (
+              {canAccessReception && (
                 <div 
                   className={`menu-item ${activeMenu === 'Recepcion' ? 'active' : ''}`}
                   onClick={() => setActiveMenu('Recepcion')}
@@ -81,7 +100,7 @@ export default function Login() {
                   Gestión de Citas
                 </div>
               )}
-              {(roles.includes('Cliente') || roles.includes('Administrador')) && (
+              {canAccessPatient && (
                 <div 
                   className={`menu-item ${activeMenu === 'Paciente' ? 'active' : ''}`}
                   onClick={() => setActiveMenu('Paciente')}
@@ -89,7 +108,7 @@ export default function Login() {
                   Mis Citas
                 </div>
               )}
-              {(roles.includes('Auditor') || roles.includes('Administrador')) && (
+              {canAccessAudit && (
                 <div 
                   className={`menu-item ${activeMenu === 'Auditoria' ? 'active' : ''}`}
                   onClick={() => setActiveMenu('Auditoria')}
@@ -114,7 +133,7 @@ export default function Login() {
                 <h1>Bienvenido, {userName}</h1>
                 <div className="roles-container">
                   {roles.length > 0 ? (
-                    roles.map(rol => <span key={rol} className="role-badge">{rol}</span>)
+                    roles.map((rol, idx) => <span key={idx} className="role-badge">{rol}</span>)
                   ) : (
                     <span className="role-badge" style={{ background: '#f8d7da', color: '#721c24' }}>Sin Acceso</span>
                   )}
@@ -124,10 +143,10 @@ export default function Login() {
 
             {/* Dashboard Views */}
             <div className="dashboard-view">
-              {activeMenu === 'Admin' && roles.includes('Administrador') && <AdminDashboard />}
-              {activeMenu === 'Recepcion' && (roles.includes('Operador') || roles.includes('Administrador')) && <ReceptionDashboard />}
-              {activeMenu === 'Paciente' && (roles.includes('Cliente') || roles.includes('Administrador')) && <PatientDashboard />}
-              {activeMenu === 'Auditoria' && (roles.includes('Auditor') || roles.includes('Administrador')) && <AuditDashboard />}
+              {activeMenu === 'Admin' && canAccessAdmin && <AdminDashboard />}
+              {activeMenu === 'Recepcion' && canAccessReception && <ReceptionDashboard />}
+              {activeMenu === 'Paciente' && canAccessPatient && <PatientDashboard />}
+              {activeMenu === 'Auditoria' && canAccessAudit && <AuditDashboard />}
               
               {roles.length === 0 && (
                 <div className="card-white">

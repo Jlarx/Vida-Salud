@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/api/appointments", "/appointments"})
+@RequestMapping({"/api/appointments", "/appointments", ""})
 public class AtencionController {
 
     private final AtencionRepository atencionRepository;

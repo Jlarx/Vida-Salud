@@ -31,8 +31,8 @@ public class SecurityConfig {
             }))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
-                // Auditoría requiere Rol de Admin o Auditor
-                .requestMatchers("/api/audit/**", "/audit/**").hasAnyRole("ADMINISTRADOR", "AUDITOR")
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/audit/**", "/audit/**", "/**").hasAnyRole("ADMINISTRADOR", "AUDITOR")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

@@ -125,7 +125,7 @@ export default function AdminDashboard() {
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan="3" style={{ textAlign: 'center', color: '#7f8c8d' }}>No hay servicios registrados</td></tr>
+              <tr><td colSpan="4" style={{ textAlign: 'center', color: '#7f8c8d' }}>No hay servicios registrados</td></tr>
             )}
           </tbody>
         </table>

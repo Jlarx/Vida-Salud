@@ -29,8 +29,9 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/report/health", "/report/health").permitAll()
-                .requestMatchers("/api/report/**", "/report/**").hasAnyRole("ADMINISTRADOR", "AUDITOR")
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/report/health", "/report/health", "/health").permitAll()
+                .requestMatchers("/api/report/**", "/report/**", "/**").hasAnyRole("ADMINISTRADOR", "AUDITOR")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/api/report", "/report"})
+@RequestMapping({"/api/report", "/report", ""})
 public class ReportController {
 
     @GetMapping("/health")

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping({"/api/audit", "/audit"})
+@RequestMapping({"/api/audit", "/audit", ""})
 @PreAuthorize("hasAnyRole('AUDITOR', 'ADMINISTRADOR')")
 public class AuditoriaController {
 

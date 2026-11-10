@@ -55,8 +55,17 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.dlq.direct}")
     private String directDlqName;
 
-    @Value("${rabbitmq.routing.key.dlq}")
+    @Value("${rabbitmq.routing.key.dlq:dlq.routing.key}")
     private String dlqRoutingKey;
+
+    @Value("${rabbitmq.routing.key.dlq.audit:audit.dlq.routing.key}")
+    private String auditDlqRoutingKey;
+
+    @Value("${rabbitmq.routing.key.dlq.notify:notify.dlq.routing.key}")
+    private String notifyDlqRoutingKey;
+
+    @Value("${rabbitmq.routing.key.dlq.direct:direct.dlq.routing.key}")
+    private String directDlqRoutingKey;
 
     // ==========================================
     // COLA 1 (Topic): audit.queue con su DLQ
@@ -65,7 +74,7 @@ public class RabbitMQConfig {
     public Queue auditQueue() {
         return QueueBuilder.durable(auditQueueName)
                 .withArgument("x-dead-letter-exchange", dlxName)
-                .withArgument("x-dead-letter-routing-key", dlqRoutingKey)
+                .withArgument("x-dead-letter-routing-key", auditDlqRoutingKey)
                 .build();
     }
 
@@ -96,7 +105,7 @@ public class RabbitMQConfig {
     public Queue notifyQueue() {
         return QueueBuilder.durable(notifyQueueName)
                 .withArgument("x-dead-letter-exchange", dlxName)
-                .withArgument("x-dead-letter-routing-key", dlqRoutingKey)
+                .withArgument("x-dead-letter-routing-key", notifyDlqRoutingKey)
                 .build();
     }
 
@@ -122,7 +131,7 @@ public class RabbitMQConfig {
     public Queue directQueue() {
         return QueueBuilder.durable(directQueueName)
                 .withArgument("x-dead-letter-exchange", dlxName)
-                .withArgument("x-dead-letter-routing-key", dlqRoutingKey)
+                .withArgument("x-dead-letter-routing-key", directDlqRoutingKey)
                 .build();
     }
 
@@ -146,17 +155,17 @@ public class RabbitMQConfig {
 
     @Bean
     public Binding auditDlqBinding(Queue auditDlq, TopicExchange deadLetterExchange) {
-        return BindingBuilder.bind(auditDlq).to(deadLetterExchange).with(dlqRoutingKey);
+        return BindingBuilder.bind(auditDlq).to(deadLetterExchange).with(auditDlqRoutingKey);
     }
 
     @Bean
     public Binding notifyDlqBinding(Queue notifyDlq, TopicExchange deadLetterExchange) {
-        return BindingBuilder.bind(notifyDlq).to(deadLetterExchange).with(dlqRoutingKey);
+        return BindingBuilder.bind(notifyDlq).to(deadLetterExchange).with(notifyDlqRoutingKey);
     }
 
     @Bean
     public Binding directDlqBinding(Queue directDlq, TopicExchange deadLetterExchange) {
-        return BindingBuilder.bind(directDlq).to(deadLetterExchange).with(dlqRoutingKey);
+        return BindingBuilder.bind(directDlq).to(deadLetterExchange).with(directDlqRoutingKey);
     }
 
     // Conversores JSON y RabbitTemplate
