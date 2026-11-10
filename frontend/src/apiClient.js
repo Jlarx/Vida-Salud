@@ -5,7 +5,7 @@ import { msalConfig, loginRequest } from './authConfig';
 const msalInstance = new PublicClientApplication(msalConfig);
 await msalInstance.initialize();
 
-const API_BASE_URL = 'https://zzyt3obhvf.execute-api.us-east-1.amazonaws.com/prod';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://zzyt3obhvf.execute-api.us-east-1.amazonaws.com/prod';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL

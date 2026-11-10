@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Base de Datos PostgreSQL Multi-Database
   db-vidasalud:
     image: postgres:15
     container_name: postgres-vidasalud
@@ -14,16 +15,176 @@ services:
       - pgdata-vidasalud:/var/lib/postgresql/data
       - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
     restart: unless-stopped
+    networks:
+      - vidasalud-net
 
-  rabbitmq:
+  # RabbitMQ Nodo 1 (Principal del Clúster)
+  rabbitmq-node1:
     image: rabbitmq:3-management
-    container_name: rabbitmq-vidasalud
+    container_name: rabbitmq-node1
+    hostname: rabbitmq-node1
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "VIDASALUD_CLUSTER_SECRET_12345"
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672"
-      - "15672:15672" # Panel de administración HTTP
+      - "5672:5672"    # AMQP principal
+      - "15672:15672"  # Panel administrativo HTTP
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq_node1_data:/var/lib/rabbitmq
     restart: unless-stopped
+    networks:
+      - vidasalud-net
 
+  # RabbitMQ Nodo 2 (Secundario - Unificado en Clúster)
+  rabbitmq-node2:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-node2
+    hostname: rabbitmq-node2
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "VIDASALUD_CLUSTER_SECRET_12345"
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5673:5672"    # AMQP nodo 2
+      - "15673:15672"  # Panel administrativo HTTP nodo 2
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq_node2_data:/var/lib/rabbitmq
+    depends_on:
+      - rabbitmq-node1
+    restart: unless-stopped
+    networks:
+      - vidasalud-net
 
+  # Kafka Broker 1 (KRaft Mode)
+  kafka-1:
+    image: apache/kafka:3.7.0
+    container_name: kafka-1
+    hostname: kafka-1
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_LISTENERS: 'PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093'
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      CLUSTER_ID: '4L622nShTUiBenDuA1Z-jg'
+    volumes:
+      - kafka1_data:/var/lib/kafka/data
+    restart: unless-stopped
+    networks:
+      - vidasalud-net
+
+  # Kafka Broker 2 (KRaft Mode)
+  kafka-2:
+    image: apache/kafka:3.7.0
+    container_name: kafka-2
+    hostname: kafka-2
+    ports:
+      - "9094:9092"
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_LISTENERS: 'PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-2:9092,PLAINTEXT_HOST://localhost:9094'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093'
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      CLUSTER_ID: '4L622nShTUiBenDuA1Z-jg'
+    volumes:
+      - kafka2_data:/var/lib/kafka/data
+    restart: unless-stopped
+    networks:
+      - vidasalud-net
+
+  # Kafka Broker 3 (KRaft Mode)
+  kafka-3:
+    image: apache/kafka:3.7.0
+    container_name: kafka-3
+    hostname: kafka-3
+    ports:
+      - "9096:9092"
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_LISTENERS: 'PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-3:9092,PLAINTEXT_HOST://localhost:9096'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093'
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      CLUSTER_ID: '4L622nShTUiBenDuA1Z-jg'
+    volumes:
+      - kafka3_data:/var/lib/kafka/data
+    restart: unless-stopped
+    networks:
+      - vidasalud-net
+
+  # Panel Web Kafka-UI
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8088:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: 'vidasalud-cluster'
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'kafka-1:9092,kafka-2:9092,kafka-3:9092'
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    restart: unless-stopped
+    networks:
+      - vidasalud-net
+
+  # Inicializador automático de Tópicos Kafka (3 particiones, 3 réplicas)
+  kafka-init-topics:
+    image: apache/kafka:3.7.0
+    container_name: kafka-init-topics
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: >
+      sh -c "
+        echo 'Esperando que el cluster Kafka de 3 brokers responda...' &&
+        sleep 12 &&
+        echo 'Creando Topico 1: vidasalud-citas (3 particiones, 3 replicas)...' &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-citas --partitions 3 --replication-factor 3 &&
+        echo 'Creando Topico 2: vidasalud-alertas (3 particiones, 3 replicas)...' &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-alertas --partitions 3 --replication-factor 3 &&
+        echo 'Topicos creados exitosamente:' &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --list
+      "
+    networks:
+      - vidasalud-net
+
+networks:
+  vidasalud-net:
+    driver: bridge
 
 volumes:
   pgdata-vidasalud:
+  rabbitmq_node1_data:
+  rabbitmq_node2_data:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:

@@ -21,9 +21,16 @@ public class CatalogoController {
         this.prestacionRepository = prestacionRepository;
     }
 
+    // Boxes
     @GetMapping("/boxes")
     public List<Box> getBoxes() {
         return boxRepository.findAll();
+    }
+
+    @GetMapping("/boxes/{id}")
+    public Box getBoxById(@PathVariable Long id) {
+        return boxRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Box no encontrado con ID " + id));
     }
 
     @PostMapping("/boxes")
@@ -32,9 +39,34 @@ public class CatalogoController {
         return boxRepository.save(box);
     }
 
+    @PutMapping("/boxes/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public Box updateBox(@PathVariable Long id, @RequestBody Box boxActualizado) {
+        return boxRepository.findById(id).map(box -> {
+            if (boxActualizado.getNombre() != null) box.setNombre(boxActualizado.getNombre());
+            if (boxActualizado.getNumero() != null) box.setNumero(boxActualizado.getNumero());
+            if (boxActualizado.getCuposTotales() != null) box.setCuposTotales(boxActualizado.getCuposTotales());
+            if (boxActualizado.getCuposDisponibles() != null) box.setCuposDisponibles(boxActualizado.getCuposDisponibles());
+            return boxRepository.save(box);
+        }).orElseThrow(() -> new RuntimeException("Box no encontrado con ID " + id));
+    }
+
+    @DeleteMapping("/boxes/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public void deleteBox(@PathVariable Long id) {
+        boxRepository.deleteById(id);
+    }
+
+    // Prestaciones
     @GetMapping("/prestaciones")
     public List<Prestacion> getPrestaciones() {
         return prestacionRepository.findAll();
+    }
+
+    @GetMapping("/prestaciones/{id}")
+    public Prestacion getPrestacionById(@PathVariable Long id) {
+        return prestacionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Prestación no encontrada con ID " + id));
     }
 
     @PostMapping("/prestaciones")

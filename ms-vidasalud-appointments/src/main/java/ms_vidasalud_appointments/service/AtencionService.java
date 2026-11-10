@@ -49,15 +49,17 @@ public class AtencionService {
         Atencion guardada = atencionRepository.save(atencion);
 
         // Registro de Auditoría
+        String antEstadoNombre = estadoAnterior != null ? estadoAnterior.name() : "INICIAL";
         AuditoriaEvent event = new AuditoriaEvent(
                 guardada.getId(),
-                usuarioEmail,
-                estadoAnterior.name(),
+                usuarioEmail != null ? usuarioEmail : "sistema@vidasalud.cl",
+                antEstadoNombre,
                 nuevoEstado.name(),
                 LocalDateTime.now()
         );
         eventPublisher.publishAudit(event);
         eventPublisher.publishNotify(event);
+        eventPublisher.publishDirect(event);
 
         return guardada;
     }
@@ -79,6 +81,7 @@ public class AtencionService {
         );
         eventPublisher.publishAudit(event);
         eventPublisher.publishNotify(event);
+        eventPublisher.publishDirect(event);
 
         return guardada;
     }

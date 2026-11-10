@@ -20,7 +20,9 @@ public class AuditoriaAtencion {
 
     @PrePersist
     protected void onCreate() {
-        fechaCambio = LocalDateTime.now();
+        if (fechaCambio == null) {
+            fechaCambio = LocalDateTime.now();
+        }
     }
 
     // Getters y Setters

@@ -81,11 +81,22 @@ Operan bajo el patrón *Database-per-service* de PostgreSQL y mensajería con *R
 
 | Servicio | Puerto | Función Principal | Seguridad |
 |---|---|---|---|
-| 📅 **`/ms-vidasalud-appointments`** | `8082` | Gestión y control de citas médicas. Publicador de eventos AMQP. | `CLIENTE`, `OPERADOR`, `ADMINISTRADOR` |
+| 📅 **`/ms-vidasalud-appointments`** | `8082` | Gestión y control de citas médicas. Publicador AMQP (Topic y Direct Exchange). | `CLIENTE`, `OPERADOR`, `ADMINISTRADOR` |
 | 🗂️ **`/ms-vidasalud-catalog`** | `8081` | Gestión de boxes médicos y catálogo de prestaciones. | `ADMINISTRADOR` (Escritura) |
-| 🔒 **`/ms-vidasalud-audit`** | `8083` | Trazabilidad inmutable de cambios de estado (Consumidor AMQP con ACK manual y DLQ). | `AUDITOR`, `ADMINISTRADOR` |
-| 📊 **`/ms-vidasalud-report`** | `8084` | Generación de estadísticas y reportería clínica. | `ADMINISTRADOR`, `AUDITOR` |
-| 🔔 **`/ms-vidasalud-notify`** | `8085` | Consumidor de eventos para envío de notificaciones y alertas. | Uso interno / AMQP |
+| 🔒 **`/ms-vidasalud-audit`** | `8083` | Trazabilidad inmutable de cambios de estado (Consumidor Topic AMQP con ACK manual y DLQ). | `AUDITOR`, `ADMINISTRADOR` |
+| 📊 **`/ms-vidasalud-report`** | `8084` | Estadísticas y reportería clínica (Consumidor Direct AMQP con ACK manual y DLQ). | `ADMINISTRADOR`, `AUDITOR` |
+| 🔔 **`/ms-vidasalud-notify`** | `8085` | Consumidor Topic AMQP para notificaciones y alertas con DLQ. | Uso interno / AMQP |
+
+### 📨 Infraestructura de Mensajería y Streaming
+* **Clúster RabbitMQ de 2 Nodos:** `rabbitmq-node1` (5672/15672) y `rabbitmq-node2` (5673/15673) integrados con auto-clustering nativo.
+* **Topología de Colas y DLQs:**
+  * `audit.queue` $\leftrightarrow$ `audit.dlq` (Topic Exchange: `audit.exchange`)
+  * `notify.queue` $\leftrightarrow$ `notify.dlq` (Topic Exchange: `notify.exchange`)
+  * `direct.queue` $\leftrightarrow$ `direct.dlq` (Direct Exchange: `direct.exchange`)
+* **Clúster Apache Kafka (KRaft Mode):**
+  * 3 Brokers activos (`kafka-1:9092`, `kafka-2:9094`, `kafka-3:9096`) con quórum KRaft.
+  * **Kafka-UI** en puerto `8088` (`http://localhost:8088` o `http://52.1.200.223:8088`).
+  * Tópicos con 3 particiones y 3 réplicas: `vidasalud-citas` y `vidasalud-alertas`.
 
 ---
 

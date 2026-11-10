@@ -22,6 +22,12 @@ public class AtencionEventPublisher {
     @Value("${rabbitmq.routing.key.notify}")
     private String notifyRoutingKey;
 
+    @Value("${rabbitmq.exchange.direct:direct.exchange}")
+    private String directExchange;
+
+    @Value("${rabbitmq.routing.key.direct:direct.routing.key}")
+    private String directRoutingKey;
+
     public AtencionEventPublisher(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
     }
@@ -32,5 +38,9 @@ public class AtencionEventPublisher {
     
     public void publishNotify(AuditoriaEvent event) {
         rabbitTemplate.convertAndSend(notifyExchange, notifyRoutingKey, event);
+    }
+
+    public void publishDirect(AuditoriaEvent event) {
+        rabbitTemplate.convertAndSend(directExchange, directRoutingKey, event);
     }
 }

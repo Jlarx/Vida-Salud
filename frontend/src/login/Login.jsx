@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMsal, AuthenticatedTemplate, UnauthenticatedTemplate } from "@azure/msal-react";
 import { loginRequest } from "../authConfig";
 import './Login.css';
@@ -17,12 +17,14 @@ export default function Login() {
   const userName = activeAccount?.name || "Usuario";
 
   // Determinar pestaña activa inicial por defecto
-  if (!activeMenu && roles.length > 0) {
-    if (roles.includes('Administrador')) setActiveMenu('Admin');
-    else if (roles.includes('Operador')) setActiveMenu('Recepcion');
-    else if (roles.includes('Cliente')) setActiveMenu('Paciente');
-    else if (roles.includes('Auditor')) setActiveMenu('Auditoria');
-  }
+  useEffect(() => {
+    if (!activeMenu && roles.length > 0) {
+      if (roles.includes('Administrador')) setActiveMenu('Admin');
+      else if (roles.includes('Operador')) setActiveMenu('Recepcion');
+      else if (roles.includes('Cliente')) setActiveMenu('Paciente');
+      else if (roles.includes('Auditor')) setActiveMenu('Auditoria');
+    }
+  }, [roles, activeMenu]);
 
   const handleLogin = () => {
     instance.loginRedirect(loginRequest).catch(e => console.error(e));
