@@ -3,8 +3,6 @@
 # Script de Despliegue Automatizado en AWS EC2 - VidaSalud
 # ==============================================================================
 
-set -e
-
 # Colores de salida
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -13,6 +11,9 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Asegurar permisos de ejecución en wrappers de Maven
+chmod +x */mvnw 2>/dev/null || true
 
 # Detección de IP Pública de la EC2
 PUBLIC_IP=$(curl -s --connect-timeout 2 http://checkip.amazonaws.com || curl -s --connect-timeout 2 http://169.254.169.254/latest/meta-data/public-ipv4 || echo "52.1.200.223")
@@ -82,11 +83,14 @@ start_infrastructure() {
 
 # Función: Compilar microservicios
 compile_microservices() {
+    echo -e "${YELLOW}>> Asegurando permisos de ejecución en los scripts de compilación...${NC}"
+    chmod +x */mvnw 2>/dev/null || true
+    
     echo -e "${YELLOW}>> Compilando microservicios individualmente con Maven (Java 21)...${NC}"
     for ms in ms-vidasalud-catalog ms-vidasalud-appointments ms-vidasalud-audit ms-vidasalud-report ms-vidasalud-notify; do
         if [ -d "$ms" ]; then
             echo -e "${CYAN}>> Compilando $ms...${NC}"
-            (cd "$ms" && ./mvnw clean package -DskipTests -q)
+            (cd "$ms" && chmod +x mvnw 2>/dev/null || true; ./mvnw clean package -DskipTests)
         fi
     done
     echo -e "${GREEN}>> Compilación completada con éxito.${NC}"
@@ -98,29 +102,51 @@ start_microservices() {
     
     echo -e "${YELLOW}>> Iniciando microservicios secuencialmente con límite de memoria (-Xmx180m)...${NC}"
     
-    echo -e "${CYAN}1/5 Iniciando Catálogo (Puerto 8081)...${NC}"
-    nohup java -Xmx180m -jar ms-vidasalud-catalog/target/*.jar > catalog.log 2>&1 &
-    sleep 8
+    # 1. Catálogo
+    JAR_CATALOG=$(ls ms-vidasalud-catalog/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1 || true)
+    if [ -n "$JAR_CATALOG" ]; then
+        echo -e "${CYAN}1/5 Iniciando Catálogo (Puerto 8081)...${NC}"
+        nohup java -Xmx180m -jar "$JAR_CATALOG" > catalog.log 2>&1 &
+        sleep 8
+    else
+        echo -e "${RED}>> No se encontró el JAR de Catálogo. Compile primero (Opción 5 o 1).${NC}"
+    fi
 
-    echo -e "${CYAN}2/5 Iniciando Citas y Atenciones (Puerto 8082)...${NC}"
-    nohup java -Xmx180m -jar ms-vidasalud-appointments/target/*.jar > appointments.log 2>&1 &
-    sleep 8
+    # 2. Citas
+    JAR_APPT=$(ls ms-vidasalud-appointments/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1 || true)
+    if [ -n "$JAR_APPT" ]; then
+        echo -e "${CYAN}2/5 Iniciando Citas y Atenciones (Puerto 8082)...${NC}"
+        nohup java -Xmx180m -jar "$JAR_APPT" > appointments.log 2>&1 &
+        sleep 8
+    fi
 
-    echo -e "${CYAN}3/5 Iniciando Auditoría (Puerto 8083)...${NC}"
-    nohup java -Xmx180m -jar ms-vidasalud-audit/target/*.jar > audit.log 2>&1 &
-    sleep 6
+    # 3. Auditoría
+    JAR_AUDIT=$(ls ms-vidasalud-audit/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1 || true)
+    if [ -n "$JAR_AUDIT" ]; then
+        echo -e "${CYAN}3/5 Iniciando Auditoría (Puerto 8083)...${NC}"
+        nohup java -Xmx180m -jar "$JAR_AUDIT" > audit.log 2>&1 &
+        sleep 6
+    fi
 
-    echo -e "${CYAN}4/5 Iniciando Reportes (Puerto 8084)...${NC}"
-    nohup java -Xmx180m -jar ms-vidasalud-report/target/*.jar > report.log 2>&1 &
-    sleep 6
+    # 4. Reportes
+    JAR_REPORT=$(ls ms-vidasalud-report/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1 || true)
+    if [ -n "$JAR_REPORT" ]; then
+        echo -e "${CYAN}4/5 Iniciando Reportes (Puerto 8084)...${NC}"
+        nohup java -Xmx180m -jar "$JAR_REPORT" > report.log 2>&1 &
+        sleep 6
+    fi
 
-    echo -e "${CYAN}5/5 Iniciando Notificaciones (Puerto 8085)...${NC}"
-    nohup java -Xmx180m -jar ms-vidasalud-notify/target/*.jar > notify.log 2>&1 &
+    # 5. Notificaciones
+    JAR_NOTIFY=$(ls ms-vidasalud-notify/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1 || true)
+    if [ -n "$JAR_NOTIFY" ]; then
+        echo -e "${CYAN}5/5 Iniciando Notificaciones (Puerto 8085)...${NC}"
+        nohup java -Xmx180m -jar "$JAR_NOTIFY" > notify.log 2>&1 &
+    fi
     
-    echo -e "${YELLOW}>> Esperando estabilización de puertos de Spring Boot...${NC}"
-    for i in {1..20}; do
+    echo -e "${YELLOW}>> Esperando arranque de Tomcat en el puerto 8081 (hasta 30 segundos)...${NC}"
+    for i in {1..15}; do
         if curl -s http://localhost:8081/catalog/boxes >/dev/null 2>&1; then
-            echo -e "${GREEN}>> Backend respondiendo en puerto 8081.${NC}"
+            echo -e "${GREEN}>> Backend de Catálogo respondiendo OK en puerto 8081.${NC}"
             break
         fi
         sleep 2
@@ -146,6 +172,50 @@ show_status() {
     done
 }
 
+# Función: Diagnóstico Integral de Endpoints y Logs
+diagnostics() {
+    echo -e "${BLUE}==============================================================================${NC}"
+    echo -e "${BOLD}                     DIAGNÓSTICO EN TIEMPO REAL                              ${NC}"
+    echo -e "${BLUE}==============================================================================${NC}"
+    
+    echo -e "${YELLOW}>> 1. Probando Backend Local (Puerto 8081)...${NC}"
+    LOCAL_RES=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/catalog/boxes || echo "FALLO_CONEXION")
+    echo -e "   Respuesta Local HTTP: ${CYAN}${LOCAL_RES}${NC}"
+    if [ "$LOCAL_RES" = "FALLO_CONEXION" ] || [ "$LOCAL_RES" = "000" ]; then
+        echo -e "${RED}   [ALERTA] El microservicio Catálogo no responde en localhost:8081.${NC}"
+        echo -e "${YELLOW}   Últimas 10 líneas de catalog.log:${NC}"
+        tail -n 10 catalog.log 2>/dev/null || echo "   (No hay catalog.log)"
+    else
+        echo -e "${GREEN}   [OK] Microservicio Catálogo respondiendo localmente.${NC}"
+    fi
+
+    echo ""
+    echo -e "${YELLOW}>> 2. Probando conexión a través de AWS API Gateway...${NC}"
+    GW_URL="https://zzyt3obhvf.execute-api.us-east-1.amazonaws.com/prod/catalog/boxes"
+    GW_RES=$(curl -s -o /dev/null -w "%{http_code}" "$GW_URL" || echo "FALLO_GATEWAY")
+    echo -e "   Respuesta API Gateway HTTP: ${CYAN}${GW_RES}${NC}"
+    if [ "$GW_RES" = "502" ] || [ "$GW_RES" = "504" ]; then
+        echo -e "${RED}   [ERROR 502/504 Bad Gateway]: El API Gateway no logra alcanzar la IP pública ${PUBLIC_IP}:8081.${NC}"
+        echo -e "   Posibles causas: El microservicio está caído o el Security Group no permite el puerto 8081."
+    elif [ "$GW_RES" = "200" ] || [ "$GW_RES" = "401" ] || [ "$GW_RES" = "403" ]; then
+        echo -e "${GREEN}   [OK] El API Gateway está conectado y enrutando correctamente hacia el backend.${NC}"
+    fi
+
+    echo ""
+    echo -e "${YELLOW}>> 3. Estado de Mensajería:${NC}"
+    if curl -s http://localhost:15672 >/dev/null 2>&1; then
+        echo -e "   RabbitMQ: ${GREEN}ONLINE${NC} en http://${PUBLIC_IP}:15672"
+    else
+        echo -e "   RabbitMQ: ${RED}OFFLINE${NC}"
+    fi
+    if curl -s http://localhost:8088 >/dev/null 2>&1; then
+        echo -e "   Kafka-UI: ${GREEN}ONLINE${NC} en http://${PUBLIC_IP}:8088"
+    else
+        echo -e "   Kafka-UI: ${RED}OFFLINE${NC}"
+    fi
+    echo -e "${BLUE}==============================================================================${NC}"
+}
+
 # ==============================================================================
 # MENÚ PRINCIPAL INTERACTIVO
 # ==============================================================================
@@ -164,9 +234,10 @@ echo -e "  ${GREEN}4)${NC} ${BOLD}Levantar Infraestructura Docker${NC} (Postgres
 echo -e "  ${GREEN}5)${NC} ${BOLD}Compilar y Levantar Microservicios Backend${NC} (Java Spring Boot)"
 echo -e "  ${GREEN}6)${NC} ${BOLD}Ver Estado del Sistema y Puertos${NC}"
 echo -e "  ${GREEN}7)${NC} ${BOLD}Ver Logs en Tiempo Real${NC} (catalog, appointments, audit, report, notify)"
+echo -e "  ${GREEN}8)${NC} ${BOLD}Diagnóstico Integral de Red y Endpoints${NC} (Test API Gateway vs Local)"
 echo -e "  ${RED}q)${NC} Salir"
 echo ""
-read -p "Ingrese una opción [1-7/q]: " OPTION
+read -p "Ingrese una opción [1-8/q]: " OPTION
 
 case $OPTION in
     1)
@@ -198,7 +269,7 @@ case $OPTION in
         ;;
     5)
         stop_microservices
-        echo "¿Desea compilar antes de iniciar? (s/n): "
+        echo -n "¿Desea compilar antes de iniciar? (s/n): "
         read RECOMPILE
         if [ "$RECOMPILE" = "s" ] || [ "$RECOMPILE" = "S" ]; then
             compile_microservices
@@ -225,6 +296,10 @@ case $OPTION in
             5) tail -n 50 -f notify.log ;;
             *) echo "Opción no válida." ;;
         esac
+        exit 0
+        ;;
+    8)
+        diagnostics
         exit 0
         ;;
     q|Q)
