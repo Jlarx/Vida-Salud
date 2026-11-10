@@ -1,211 +1,147 @@
 <div align="center">
   
-# 🏥 VidaSalud - Sistema de Gestión Médica
-  
-**Arquitectura de Microservicios | Zero Trust Security | Mensajería Asíncrona | Frontend Reactivo**
+# 🏥 VidaSalud - Plataforma de Gestión Médica Cloud
+
+**Arquitectura de Microservicios • Zero Trust Security • Streaming con Apache Kafka • Mensajería Clúster RabbitMQ**
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.8-brightgreen.svg?logo=spring)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-19-blue.svg?logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF.svg?logo=vite)](https://vitejs.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg?logo=postgresql)](https://www.postgresql.org/)
-[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-AMQP-FF6600.svg?logo=rabbitmq)](https://www.rabbitmq.com/)
+[![RabbitMQ](https://img.shields.io/badge/RabbitMQ_Clúster-2_Nodos-FF6600.svg?logo=rabbitmq)](https://www.rabbitmq.com/)
+[![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-3_Brokers_KRaft-231F20.svg?logo=apachekafka)](https://kafka.apache.org/)
+[![Kafka-UI](https://img.shields.io/badge/Kafka--UI-Puerto_8088-00C7B7.svg)](http://52.1.200.223:8088)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg?logo=docker)](https://www.docker.com/)
-[![AWS EC2](https://img.shields.io/badge/AWS-EC2-FF9900.svg?logo=amazon-aws)](https://aws.amazon.com/ec2/)
+[![AWS EC2](https://img.shields.io/badge/AWS-EC2_Ubuntu-FF9900.svg?logo=amazon-aws)](https://aws.amazon.com/ec2/)
 [![AWS API Gateway](https://img.shields.io/badge/AWS-API_Gateway-FF4F8B.svg?logo=amazon-aws)](https://aws.amazon.com/api-gateway/)
-[![Azure Entra ID](https://img.shields.io/badge/Azure_Entra_ID-MSAL-0078D4.svg?logo=microsoft-azure)](https://azure.microsoft.com/)
+[![Azure Entra ID](https://img.shields.io/badge/Azure_Entra_ID-OAuth2_MSAL-0078D4.svg?logo=microsoft-azure)](https://azure.microsoft.com/)
+
+---
+
+### 🌐 Accesos Directos de Evaluación en Vivo (AWS Cloud)
+| Servicio | Enlace de Demostración | Credenciales / Tipo |
+|---|---|---|
+| 📊 **Kafka-UI (3 Brokers / 2 Tópicos / 3 Réplicas)** | [http://52.1.200.223:8088](http://52.1.200.223:8088) | Acceso Libre |
+| 🐇 **RabbitMQ Clúster - Nodo 1** | [http://52.1.200.223:15672](http://52.1.200.223:15672) | `guest` / `guest` |
+| 🐇 **RabbitMQ Clúster - Nodo 2** | [http://52.1.200.223:15673](http://52.1.200.223:15673) | `guest` / `guest` |
+| 🌐 **AWS API Gateway (Producción)** | `https://zzyt3obhvf.execute-api.us-east-1.amazonaws.com/prod` | Bearer JWT (Azure Entra ID) |
+
+---
 
 </div>
 
----
-
 ## 📖 Descripción del Proyecto
-**VidaSalud** es una plataforma de gestión médica de nivel empresarial diseñada para manejar reservas de citas, administración de boxes y auditorías clínicas. El proyecto adopta una arquitectura basada en **Microservicios** en AWS, mensajería asíncrona tolerante a fallos con **RabbitMQ (AMQP / Dead Letter Queues)** y seguridad **Zero Trust**, centralizando la validación de identidad a través de Microsoft Azure Entra ID.
+**VidaSalud** es una solución integral de gestión clínica diseñada bajo los estándares de la industria en **arquitecturas distribuidas, seguridad Zero Trust y tolerancia a fallos**. Permite administrar atenciones médicas, controlar la capacidad física de boxes, auditar de manera inmutable el ciclo de vida de los pacientes y emitir alertas operativas y estadísticas en tiempo real.
 
 ---
 
-## 🏗️ Arquitectura del Sistema
+## 🏗️ Arquitectura Integral del Sistema
 
 ```
-                      +---------------------------------------+
-                      |       Frontend Web (React + Vite)     |
-                      |  - Autenticación OAuth2 / Azure MSAL  |
-                      +-------------------+-------------------+
-                                          | HTTPS (Bearer Token)
-                                          v
-                      +---------------------------------------+
-                      |         AWS API Gateway               |
-                      +-------------------+-------------------+
-                                          | Enrutamiento HTTP
-                                          v
-      +-----------------------------------------------------------------------+
-      |                  Instancia AWS EC2 (Microservicios)                   |
-      |                                                                       |
-      |  +---------------------------+       +-----------------------------+  |
-      |  | ms-vidasalud-appointments | ----> |          RabbitMQ           |  |
-      |  |        (Puerto 8082)      | Event |  - Exchanges y Colas        |  |
-      |  +-------------+-------------+       |  - Dead Letter Queue (DLQ)  |  |
-      |                |                     +--------------+--------------+  |
-      |  +-------------+-------------+                      |                 |
-      |  |    ms-vidasalud-catalog   |                      | Eventos         |
-      |  |        (Puerto 8081)      |                      v                 |
-      |  +-------------+-------------+       +--------------+--------------+  |
-      |                |                     |      ms-vidasalud-audit     |  |
-      |  +-------------+-------------+       |        (Puerto 8083)        |  |
-      |  |     ms-vidasalud-report   |       +--------------+--------------+  |
-      |  |        (Puerto 8084)      |                      |                 |
-      |  +-------------+-------------+       +--------------+--------------+  |
-      |                                      |      ms-vidasalud-notify    |  |
-      |                                      |        (Puerto 8085)        |  |
-      |                                      +-----------------------------+  |
-      |                                                                       |
-      |  +-----------------------------------------------------------------+  |
-      |  |                 PostgreSQL 15 (Docker Multi-DB)                 |  |
-      |  |  vidasalud_appointments | vidasalud_catalog | vidasalud_audit  |  |
-      |  |  vidasalud_report       | vidasalud         (Puerto 5432)       |  |
-      |  +-----------------------------------------------------------------+  |
-      +-----------------------------------------------------------------------+
+                        +-----------------------------------------------+
+                        |       Frontend Reactivo (React 19 + Vite)     |
+                        |      - Autenticación OAuth 2.0 / Azure MSAL   |
+                        +-----------------------+-----------------------+
+                                                | HTTPS + Bearer JWT
+                                                v
+                        +-----------------------------------------------+
+                        |       AWS API Gateway (Edge Routing)          |
+                        | - Valida firmas JWT y enruta a la instancia   |
+                        +-----------------------+-----------------------+
+                                                | HTTP Interno
+                                                v
+    +-----------------------------------------------------------------------------------+
+    |                        Instancia Amazon EC2 (Ubuntu Cloud)                        |
+    |                                                                                   |
+    |   +---------------------------------------+   +-------------------------------+   |
+    |   |     Microservicios Spring Boot 4      |   |   Clúster RabbitMQ (2 Nodos)  |   |
+    |   |                                       |   | - rabbitmq-node1 (Port 5672)  |   |
+    |   | • ms-catalog      (Puerto 8081)       |   | - rabbitmq-node2 (Port 5673)  |   |
+    |   | • ms-appointments (Puerto 8082) ----> |   |                               |   |
+    |   | • ms-audit        (Puerto 8083) <---- |   | • Exchanges: DIRECT y TOPIC   |   |
+    |   | • ms-report       (Puerto 8084) <---- |   | • 3 Colas: audit, notify,     |   |
+    |   | • ms-notify       (Puerto 8085) <---- |   |   direct + 3 DLQ dedicadas    |   |
+    |   +---------------------------------------+   +-------------------------------+   |
+    |                       |                                                           |
+    |                       | Eventos Streaming     +-------------------------------+   |
+    |                       +---------------------> |  Clúster Apache Kafka (KRaft) |   |
+    |                       |                       | - kafka-1 (9092)              |   |
+    |                       v                       | - kafka-2 (9094)              |   |
+    |   +---------------------------------------+   | - kafka-3 (9096)              |   |
+    |   |   PostgreSQL 15 (Docker Multi-DB)     |   | • Tópicos: vidasalud-citas,   |   |
+    |   | • vidasalud_appointments              |   |   vidasalud-alertas           |   |
+    |   | • vidasalud_catalog                   |   |   (3 Particiones, 3 Réplicas) |   |
+    |   | • vidasalud_audit                     |   | • Kafka-UI: Puerto 8088       |   |
+    |   | • vidasalud_report                    |   +-------------------------------+   |
+    |   +---------------------------------------+                                       |
+    +-----------------------------------------------------------------------------------+
 ```
 
-### 🖥️ Frontend
-* **`/frontend`**: Interfaz de usuario construida con **React y Vite**.
-  * Autenticación segura usando `@azure/msal-react` y `@azure/msal-browser` (Flujo OAuth2.0 / OpenID Connect con Azure Entra ID).
-  * Renderizado condicional dinámico según los roles/claims del JWT.
+---
 
-### 🛡️ API Gateway y Red AWS
-* La arquitectura expone sus endpoints de forma centralizada mediante **AWS API Gateway**.
-* El frontend realiza sus solicitudes al API Gateway (`/api/...`), el cual enruta el tráfico directamente hacia la instancia **Amazon EC2**.
-* Cada microservicio valida criptográficamente la firma del JWT con los servidores de Azure Entra ID antes de procesar cualquier solicitud.
+## ⚙️ Matriz de Microservicios Backend
 
-### ⚙️ Microservicios de Backend (Spring Boot 4 / Java 21)
-Operan bajo el patrón *Database-per-service* de PostgreSQL y mensajería con *RabbitMQ*:
+Cada microservicio opera con su propia base de datos (*Database-per-service*) y control de acceso basado en roles (**RBAC**):
 
-| Servicio | Puerto | Función Principal | Seguridad |
+| Microservicio | Puerto | Función Principal | Seguridad y Roles |
 |---|---|---|---|
-| 📅 **`/ms-vidasalud-appointments`** | `8082` | Gestión y control de citas médicas. Publicador AMQP (Topic y Direct Exchange). | `CLIENTE`, `OPERADOR`, `ADMINISTRADOR` |
-| 🗂️ **`/ms-vidasalud-catalog`** | `8081` | Gestión de boxes médicos y catálogo de prestaciones. | `ADMINISTRADOR` (Escritura) |
-| 🔒 **`/ms-vidasalud-audit`** | `8083` | Trazabilidad inmutable de cambios de estado (Consumidor Topic AMQP con ACK manual y DLQ). | `AUDITOR`, `ADMINISTRADOR` |
-| 📊 **`/ms-vidasalud-report`** | `8084` | Estadísticas y reportería clínica (Consumidor Direct AMQP con ACK manual y DLQ). | `ADMINISTRADOR`, `AUDITOR` |
-| 🔔 **`/ms-vidasalud-notify`** | `8085` | Consumidor Topic AMQP para notificaciones y alertas con DLQ. | Uso interno / AMQP |
-
-### 📨 Infraestructura de Mensajería y Streaming
-* **Clúster RabbitMQ de 2 Nodos:** `rabbitmq-node1` (5672/15672) y `rabbitmq-node2` (5673/15673) integrados con auto-clustering nativo.
-* **Topología de Colas y DLQs:**
-  * `audit.queue` $\leftrightarrow$ `audit.dlq` (Topic Exchange: `audit.exchange`)
-  * `notify.queue` $\leftrightarrow$ `notify.dlq` (Topic Exchange: `notify.exchange`)
-  * `direct.queue` $\leftrightarrow$ `direct.dlq` (Direct Exchange: `direct.exchange`)
-* **Clúster Apache Kafka (KRaft Mode):**
-  * 3 Brokers activos (`kafka-1:9092`, `kafka-2:9094`, `kafka-3:9096`) con quórum KRaft.
-  * **Kafka-UI** en puerto `8088` (`http://localhost:8088` o `http://52.1.200.223:8088`).
-  * Tópicos con 3 particiones y 3 réplicas: `vidasalud-citas` y `vidasalud-alertas`.
+| 📅 **`ms-vidasalud-appointments`** | `8082` | Gestión y control del ciclo de vida de citas médicas. Publicador AMQP en Exchanges Topic y Direct. | `CLIENTE`, `OPERADOR`, `ADMINISTRADOR` |
+| 🗂️ **`ms-vidasalud-catalog`** | `8081` | Administración de consultorios (Boxes) y catálogo de prestaciones médicas. | `ADMINISTRADOR` (Escritura), Autenticado (Lectura) |
+| 🔒 **`ms-vidasalud-audit`** | `8083` | Trazabilidad inmutable de estados con confirmación manual (**Manual ACK**) y reenvío a DLQ ante fallos. | `AUDITOR`, `ADMINISTRADOR` |
+| 📊 **`ms-vidasalud-report`** | `8084` | Estadísticas y reportería clínica. Consumidor directo de eventos mediante **DirectExchange**. | `ADMINISTRADOR`, `AUDITOR` |
+| 🔔 **`ms-vidasalud-notify`** | `8085` | Consumidor AMQP de alertas y notificaciones con tolerancia a fallos (DLQ). | Uso interno / AMQP |
 
 ---
 
-## 🚀 Guía de Instalación y Ejecución Local
+## 📨 Topología de Mensajería y Streaming
 
-### Prerrequisitos
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) ejecutándose.
-- Java 21 LTS instalado.
-- Node.js (v18+) y npm.
+### 🐇 1. Clúster de RabbitMQ (Alta Disponibilidad)
+* **2 Nodos en Clúster:** `rabbitmq-node1` y `rabbitmq-node2` sincronizados mediante auto-clustering nativo.
+* **Exchanges Configurados:**
+  * `direct.exchange` (**DirectExchange**): Enrutamiento puntual mediante clave exacta (`direct.routing.key`).
+  * `audit.exchange` (**TopicExchange**): Enrutamiento por tópicos de auditoría (`audit.routing.key`).
+  * `notify.exchange` (**TopicExchange**): Enrutamiento de notificaciones operativas (`notify.routing.key`).
+  * `deadLetterExchange` (**TopicExchange / DLX**): Enrutador centralizado de mensajes rechazados o erróneos hacia las DLQs.
+* **3 Colas de Mensajes y sus 3 DLQs Activas:**
+  1. `audit.queue` $\leftrightarrow$ DLQ: `audit.dlq`
+  2. `notify.queue` $\leftrightarrow$ DLQ: `notify.dlq`
+  3. `direct.queue` $\leftrightarrow$ DLQ: `direct.dlq`
 
-### Ejecución en 1 Clic (Windows)
-1. Clona el repositorio:
-   ```bash
-   git clone https://github.com/Jlarx/Vida-Salud.git
-   cd Vida-Salud
-   ```
-2. Ejecuta el archivo orquestador:
-   ```cmd
-   .\start-all.bat
-   ```
-3. **¿Qué realiza `start-all.bat`?**
-   * Levanta los contenedores de Docker (`PostgreSQL 15` multi-base de datos y `RabbitMQ` con panel de control en `http://localhost:15672`).
-   * Inicia cada microservicio de Spring Boot en ventanas independientes.
-   * Inicia el servidor de desarrollo del Frontend en `http://localhost:5173`.
+### ⚡ 2. Clúster Apache Kafka (KRaft Mode) y Kafka-UI
+* **3 Brokers en Quórum KRaft:** `kafka-1`, `kafka-2` y `kafka-3` operando sin dependencia de Zookeeper.
+* **Panel de Control Kafka-UI:** Accesible vía web en el puerto **`8088`**.
+* **Tópicos Creados:**
+  * `vidasalud-citas`: **3 particiones** y **factor de replicación 3**.
+  * `vidasalud-alertas`: **3 particiones** y **factor de replicación 3**.
 
 ---
 
-## ☁️ Despliegue en AWS EC2 (Paso a Paso sin cuelgues)
+## 🚀 Despliegue en AWS EC2 (Paso a Paso Automatizado)
 
-> [!IMPORTANT]
-> En instancias EC2 con recursos ajustados (como `t2.micro` o `t3.micro` con 1 GB de RAM), es indispensable configurar **Swap** y compilar los microservicios individualmente para evitar que la instancia se congele por falta de memoria.
+Para garantizar un inicio fluido y sin saturación de memoria en instancias con 1 GB de RAM, se incluye el script orquestador [`deploy-ec2.sh`](./deploy-ec2.sh):
 
-### 1. Configurar Swap (4 GB) en la EC2 (Solo se hace una vez)
 ```bash
-sudo fallocate -l 4G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-```
+# 1. Conéctate a tu instancia EC2 por SSH:
+ssh -i "tu-llave.pem" ubuntu@52.1.200.223
 
-### 2. Clonar o Actualizar el Repositorio
-```bash
-cd ~
-# Si clonas por primera vez:
-git clone https://github.com/Jlarx/Vida-Salud.git
-cd Vida-Salud
-
-# Si ya estaba clonado:
+# 2. Clona o actualiza el repositorio:
 cd ~/Vida-Salud
 git pull origin main
+
+# 3. Ejecuta el script de despliegue automatizado:
+chmod +x deploy-ec2.sh
+./deploy-ec2.sh
 ```
-
-### 3. Levantar la Infraestructura (Docker)
-```bash
-docker compose -f infra/docker-compose.yml down || true
-docker compose -f infra/docker-compose.yml up -d
-sleep 8
-```
-
-### 4. Compilar los Microservicios (Paso a Paso)
-```bash
-cd ~/Vida-Salud
-sudo pkill -f java || true
-
-cd ms-vidasalud-catalog && ./mvnw clean package -DskipTests && cd ..
-cd ms-vidasalud-appointments && ./mvnw clean package -DskipTests && cd ..
-cd ms-vidasalud-audit && ./mvnw clean package -DskipTests && cd ..
-cd ms-vidasalud-report && ./mvnw clean package -DskipTests && cd ..
-cd ms-vidasalud-notify && ./mvnw clean package -DskipTests && cd ..
-```
-
-### 5. Ejecutar en Segundo Plano con Límite de Memoria JVM
-```bash
-cd ~/Vida-Salud
-
-nohup java -Xmx200m -jar ms-vidasalud-catalog/target/*.jar > catalog.log 2>&1 &
-sleep 5
-
-nohup java -Xmx200m -jar ms-vidasalud-appointments/target/*.jar > appointments.log 2>&1 &
-sleep 5
-
-nohup java -Xmx200m -jar ms-vidasalud-audit/target/*.jar > audit.log 2>&1 &
-sleep 5
-
-nohup java -Xmx200m -jar ms-vidasalud-report/target/*.jar > report.log 2>&1 &
-sleep 5
-
-nohup java -Xmx200m -jar ms-vidasalud-notify/target/*.jar > notify.log 2>&1 &
-```
-
-### 6. Monitoreo y Verificación
-```bash
-# Ver procesos Java activos:
-ps aux | grep java
-
-# Ver logs en vivo de cualquier servicio:
-tail -f appointments.log
-```
+*(Selecciona la **Opción 1** para levantar de forma secuencial la base de datos, los clústeres de mensajería y compilar/ejecutar los 5 microservicios con límites de memoria JVM optimizados).*
 
 ---
 
-## 🔐 Seguridad y Autenticación (Zero Trust)
-1. **Inicio de Sesión:** El usuario inicia sesión en el Frontend contra **Microsoft Azure Entra ID**.
-2. **Token JWT:** El cliente adjunta el `Bearer Token` firmado en cada petición hacia el **AWS API Gateway**.
-3. **Validación Criptográfica:** Cada microservicio valida independientemente el emisor (`issuer-uri`), la audiencia (`aud`) y los roles (`roles`/`scp`) del token mediante Spring Security y OAuth2 Resource Server.
-4. **Control de Acceso Basado en Roles (RBAC):** Se aplican restricciones estrictas por perfil (`ADMINISTRADOR`, `OPERADOR`, `CLIENTE`, `AUDITOR`).
+## 🔐 Seguridad Zero Trust y Gobernanza de Identidad (IDaaS)
+1. **Identidad Federada:** Autenticación a través de **Microsoft Azure Entra ID** bajo el flujo OAuth 2.0 / OpenID Connect con PKCE.
+2. **Validación Criptográfica:** Cada microservicio valida independientemente el `issuer-uri` de Microsoft, el ID de cliente de la aplicación y la firma RSA del JWT.
+3. **Control de Acceso (RBAC):** Restricción estricta de rutas mediante claims y roles (`ADMINISTRADOR`, `OPERADOR`, `CLIENTE`, `AUDITOR`).
 
 <br/>
 <div align="center">
-  <i>Construido con pasión para el futuro de la gestión hospitalaria inteligente.</i>
+  <i>VidaSalud - Transformando la salud digital con arquitecturas cloud nativas y tolerantes a fallos.</i>
 </div>
