@@ -32,7 +32,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/rabbitmq/**", "/queues/**", "/exchanges/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/kafka/**", "/kafka/**", "/api/appointments/kafka/**", "/appointments/kafka/**").permitAll()
+                .requestMatchers("/api/kafka/**", "/kafka/**", "/api/appointments/kafka/**", "/appointments/kafka/**").hasRole("ADMINISTRADOR")
+                .requestMatchers("/api/rabbitmq/**", "/queues/**", "/exchanges/**").hasRole("ADMINISTRADOR")
                 .requestMatchers("/api/appointments/**", "/appointments/**", "/**").hasAnyRole("ADMINISTRADOR", "OPERADOR", "CLIENTE", "PACIENTE", "RECEPCIONISTA")
                 .anyRequest().authenticated()
             )

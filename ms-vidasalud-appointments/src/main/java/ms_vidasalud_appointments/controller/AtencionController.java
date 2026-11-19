@@ -21,11 +21,13 @@ public class AtencionController {
     private final AtencionRepository atencionRepository;
     private final AtencionService atencionService;
     private final AtencionEventPublisher eventPublisher;
+    private final ms_vidasalud_appointments.messaging.producer.AtencionKafkaProducer kafkaProducer;
 
-    public AtencionController(AtencionRepository atencionRepository, AtencionService atencionService, AtencionEventPublisher eventPublisher) {
+    public AtencionController(AtencionRepository atencionRepository, AtencionService atencionService, AtencionEventPublisher eventPublisher, ms_vidasalud_appointments.messaging.producer.AtencionKafkaProducer kafkaProducer) {
         this.atencionRepository = atencionRepository;
         this.atencionService = atencionService;
         this.eventPublisher = eventPublisher;
+        this.kafkaProducer = kafkaProducer;
     }
 
     @GetMapping({"", "/atenciones"})
@@ -90,6 +92,10 @@ public class AtencionController {
         eventPublisher.publishAudit(event);
         eventPublisher.publishNotify(event);
         eventPublisher.publishDirect(event);
+
+        // Publicar en Kafka (Tópicos vidasalud-citas y vidasalud-alertas)
+        kafkaProducer.publishCitaEvent(String.valueOf(guardada.getId()), event);
+        kafkaProducer.publishAlertaEvent(String.valueOf(guardada.getId()), "NUEVA CITA: Solicitada atención #" + guardada.getId() + " para " + guardada.getPacienteEmail());
 
         return guardada;
     }

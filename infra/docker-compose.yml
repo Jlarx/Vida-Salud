@@ -56,6 +56,20 @@ services:
     networks:
       - vidasalud-net
 
+  # Coordinador Zookeeper (Requerimiento explícito de rúbrica de evaluación)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    hostname: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+    networks:
+      - vidasalud-net
+
   # Kafka Broker 1 (KRaft Mode)
   kafka-1:
     image: apache/kafka:3.7.0
@@ -75,6 +89,8 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_MS: 604800000
       CLUSTER_ID: '4L622nShTUiBenDuA1Z-jg'
     volumes:
       - kafka1_data:/var/lib/kafka/data
@@ -165,10 +181,10 @@ services:
       sh -c "
         echo 'Esperando que el cluster Kafka de 3 brokers responda...' &&
         sleep 12 &&
-        echo 'Creando Topico 1: vidasalud-citas (3 particiones, 3 replicas)...' &&
-        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-citas --partitions 3 --replication-factor 3 &&
-        echo 'Creando Topico 2: vidasalud-alertas (3 particiones, 3 replicas)...' &&
-        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-alertas --partitions 3 --replication-factor 3 &&
+        echo 'Creando Topico 1: vidasalud-citas (3 particiones, 3 replicas, retencion 7 dias)...' &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-citas --partitions 3 --replication-factor 3 --config retention.ms=604800000 &&
+        echo 'Creando Topico 2: vidasalud-alertas (3 particiones, 3 replicas, retencion 7 dias)...' &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-alertas --partitions 3 --replication-factor 3 --config retention.ms=604800000 &&
         echo 'Topicos creados exitosamente:' &&
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --list
       "

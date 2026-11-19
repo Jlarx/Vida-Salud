@@ -1,11 +1,14 @@
 package ms_vidasalud_appointments.service;
 
-import ms_vidasalud_appointments.entity.*;
+import ms_vidasalud_appointments.dto.AuditoriaEvent;
+import ms_vidasalud_appointments.entity.Atencion;
+import ms_vidasalud_appointments.entity.EstadoAtencion;
+import ms_vidasalud_appointments.messaging.producer.AtencionEventPublisher;
+import ms_vidasalud_appointments.messaging.producer.AtencionKafkaProducer;
 import ms_vidasalud_appointments.repository.AtencionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ms_vidasalud_appointments.messaging.producer.AtencionEventPublisher;
-import ms_vidasalud_appointments.dto.AuditoriaEvent;
+
 import java.time.LocalDateTime;
 
 @Service
@@ -13,10 +16,12 @@ public class AtencionService {
     
     private final AtencionRepository atencionRepository;
     private final AtencionEventPublisher eventPublisher;
+    private final AtencionKafkaProducer kafkaProducer;
 
-    public AtencionService(AtencionRepository atencionRepository, AtencionEventPublisher eventPublisher) {
+    public AtencionService(AtencionRepository atencionRepository, AtencionEventPublisher eventPublisher, AtencionKafkaProducer kafkaProducer) {
         this.atencionRepository = atencionRepository;
         this.eventPublisher = eventPublisher;
+        this.kafkaProducer = kafkaProducer;
     }
 
     @Transactional
@@ -59,6 +64,12 @@ public class AtencionService {
         eventPublisher.publishNotify(event);
         eventPublisher.publishDirect(event);
 
+        // Publicación en Kafka (Clave = ID de atención para particionamiento consistente)
+        kafkaProducer.publishCitaEvent(String.valueOf(guardada.getId()), event);
+        if (nuevoEstado == EstadoAtencion.CANCELADA || nuevoEstado == EstadoAtencion.CONFIRMADA) {
+            kafkaProducer.publishAlertaEvent(String.valueOf(guardada.getId()), "ESTADO CITA #" + guardada.getId() + ": " + nuevoEstado);
+        }
+
         return guardada;
     }
 
@@ -80,6 +91,10 @@ public class AtencionService {
         eventPublisher.publishAudit(event);
         eventPublisher.publishNotify(event);
         eventPublisher.publishDirect(event);
+
+        // Publicación en Kafka
+        kafkaProducer.publishCitaEvent(String.valueOf(guardada.getId()), event);
+        kafkaProducer.publishAlertaEvent(String.valueOf(guardada.getId()), "REAGENDAMIENTO CITA #" + guardada.getId() + " para " + nuevaFecha);
 
         return guardada;
     }
