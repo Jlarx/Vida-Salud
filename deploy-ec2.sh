@@ -35,10 +35,19 @@ ensure_swap() {
 start_all() {
     ensure_swap
     
+    # Asegurar mapeo de hostnames Kafka en /etc/hosts
+    grep -q "kafka-1" /etc/hosts 2>/dev/null || echo "127.0.0.1 kafka-1 kafka-2 kafka-3" | sudo tee -a /etc/hosts >/dev/null 2>&1 || true
+
     echo -e "${YELLOW}>> 1/4 Deteniendo instancias previas de microservicios...${NC}"
     pkill -9 -f 'ms-vidasalud' 2>/dev/null || true
     pkill -9 -f 'ms_vidasalud' 2>/dev/null || true
     sleep 2
+
+    # Asegurar swap si no existe para evitar OOM Killer
+    if [ $(free -m | awk '/^Swap:/ {print $2}') -eq 0 ] 2>/dev/null; then
+        echo -e "${CYAN}>> Configurando 2GB de Swap para garantizar estabilidad de RAM...${NC}"
+        sudo fallocate -l 2G /swapfile 2>/dev/null && sudo chmod 600 /swapfile && sudo mkswap /swapfile 2>/dev/null && sudo swapon /swapfile 2>/dev/null || true
+    fi
 
     echo -e "${YELLOW}>> 2/4 Levantando Docker (Postgres, RabbitMQ Cluster, Kafka KRaft, Kafka-UI)...${NC}"
     docker compose -f infra/docker-compose.yml up -d
@@ -93,16 +102,38 @@ start_all() {
     nohup java -Xmx180m -jar "$JAR_NOTIFY" > notify.log 2>&1 &
     echo -e "   [5/5] Notificaciones iniciado (Puerto 8085)"
 
-    echo -e "${YELLOW}>> Esperando que Tomcat active el puerto 8081...${NC}"
-    for i in {1..25}; do
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/catalog/boxes || echo "000")
-        if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
-            echo -e "${GREEN}>> ✅ ¡SISTEMA ONLINE Y LISTO! (Respuesta HTTP: $HTTP_CODE)${NC}"
+    echo -e "${YELLOW}>> Esperando que los microservicios activen sus puertos...${NC}"
+    for i in {1..30}; do
+        UP_COUNT=0
+        for p in 8081 8082 8083 8084 8085; do
+            if nc -z localhost $p 2>/dev/null || curl -s http://localhost:$p >/dev/null 2>&1; then
+                ((UP_COUNT++))
+            fi
+        done
+        if [ "$UP_COUNT" -eq 5 ]; then
+            echo -e "${GREEN}>> ✅ ¡LOS 5 MICROSERVICIOS ESTÁN ONLINE Y LISTOS! (5/5)${NC}"
             return 0
         fi
         sleep 2
     done
-    echo -e "${YELLOW}>> Los microservicios están finalizando su arranque en segundo plano. Verifique con la opción 3.${NC}"
+
+    echo -e "${YELLOW}>> Estado actual de los servicios tras la espera:${NC}"
+    for item in "8081:Catálogo:catalog.log" "8082:Citas:appointments.log" "8083:Auditoría:audit.log" "8084:Reportes:report.log" "8085:Notificaciones:notify.log"; do
+        port="${item%%:*}"
+        rest="${item#*:}"
+        name="${rest%%:*}"
+        logfile="${rest#*:}"
+        if nc -z localhost $port 2>/dev/null || curl -s http://localhost:$port >/dev/null 2>&1; then
+            echo -e "   - Puerto $port ($name): ${GREEN}ONLINE${NC}"
+        else
+            echo -e "   - Puerto $port ($name): ${RED}OFFLINE${NC} (Revisando $logfile)"
+            if [ -f "$logfile" ]; then
+                echo -e "${CYAN}   --- Últimas líneas de $logfile ---${NC}"
+                tail -n 12 "$logfile" | sed 's/^/     /'
+                echo -e "${CYAN}   ----------------------------------${NC}"
+            fi
+        fi
+    done
 }
 
 stop_all() {
