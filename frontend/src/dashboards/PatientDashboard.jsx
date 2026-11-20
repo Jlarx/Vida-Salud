@@ -12,7 +12,6 @@ export default function PatientDashboard() {
       setAtenciones(resAtenciones.data);
     } catch (error) {
       console.error("Error fetching appointments", error);
-      alert("Error al cargar citas: " + (error.response?.data?.message || error.message));
     }
     
     try {
@@ -20,7 +19,6 @@ export default function PatientDashboard() {
       setPrestaciones(resPrestaciones.data);
     } catch (error) {
       console.error("Error fetching catalog", error);
-      alert("Error al cargar servicios disponibles: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -63,7 +61,12 @@ export default function PatientDashboard() {
       </div>
 
       <div className="card-white">
-        <h3 style={{ marginTop: 0, color: '#00a4ef' }}>Historial de Citas</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0, color: '#00a4ef' }}>Historial de Citas</h3>
+          <button type="button" className="btn-action" onClick={fetchData} style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>
+            🔄 Actualizar
+          </button>
+        </div>
         <table className="modern-table">
           <thead>
             <tr>

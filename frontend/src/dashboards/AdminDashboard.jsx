@@ -7,13 +7,16 @@ export default function AdminDashboard() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ nombre: '', descripcion: '' });
 
+  const [errorMsg, setErrorMsg] = useState(null);
+
   const fetchData = async () => {
     try {
+      setErrorMsg(null);
       const res = await apiClient.get('/catalog/prestaciones');
       setPrestaciones(res.data);
     } catch (error) {
       console.error("Error fetching admin data", error);
-      alert("Error al cargar datos: " + (error.response?.data?.message || error.message));
+      setErrorMsg(error.response?.data?.message || error.message);
     }
   };
 
@@ -86,7 +89,18 @@ export default function AdminDashboard() {
       </div>
 
       <div className="card-white">
-        <h3 style={{ marginTop: 0, color: '#00a4ef' }}>Servicios Activos</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0, color: '#00a4ef' }}>Servicios Activos</h3>
+          <button type="button" className="btn-action" onClick={fetchData} style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>
+            🔄 Actualizar Lista
+          </button>
+        </div>
+        {errorMsg && (
+          <div style={{ padding: '0.8rem', marginBottom: '1rem', background: '#ffebee', color: '#c62828', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>⚠️ {errorMsg}</span>
+            <button type="button" onClick={fetchData} style={{ background: '#c62828', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '3px', cursor: 'pointer' }}>Reintentar</button>
+          </div>
+        )}
         <table className="modern-table">
           <thead>
             <tr>
