@@ -85,7 +85,7 @@ public class AtencionController {
         AuditoriaEvent event = new AuditoriaEvent(
                 guardada.getId(),
                 autorCambio,
-                "CREACION",
+                guardada.getEstado().name(),
                 guardada.getEstado().name(),
                 LocalDateTime.now()
         );

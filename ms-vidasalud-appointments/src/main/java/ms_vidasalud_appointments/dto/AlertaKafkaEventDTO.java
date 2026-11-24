@@ -16,8 +16,8 @@ public class AlertaKafkaEventDTO implements Serializable {
 
     private String alertaId;
     private Long atencionId;
-    private String tipoAlerta;     // EJ: "CITA_SOLICITADA", "CITA_CONFIRMADA", "CITA_CANCELADA", "CITA_REAGENDADA"
-    private String nivelPrioridad; // "ALTA", "MEDIA", "INFORMATIVA"
+    private String tipoAlerta;
+    private String nivelPrioridad;
     private String mensaje;
     private String destinatario;
     private String fechaEmision;

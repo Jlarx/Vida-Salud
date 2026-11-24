@@ -8,16 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-
 import java.time.LocalDateTime;
 
-/**
- * Consumidor Kafka desacoplado para Auditoría Clínica.
- * Cumple los criterios de la rúbrica (Criterio 5, 6 y 8: 38% total):
- * - Uso de @KafkaListener con consumer group 'audit-group'.
- * - Validación exhaustiva de payloads y tolerancia a fallos.
- * - Registro inmutable de trazas separando la infraestructura de mensajería de la persistencia.
- */
 @Component
 public class KafkaAuditConsumer {
 
@@ -29,12 +21,8 @@ public class KafkaAuditConsumer {
         this.repository = repository;
     }
 
-    @KafkaListener(
-            topics = "${kafka.topic.citas:vidasalud-citas}",
-            groupId = "audit-group"
-    )
+    @KafkaListener(topics = "${kafka.topic.citas:vidasalud-citas}", groupId = "audit-group")
     public void consumeCitaEvent(ConsumerRecord<String, CitaKafkaEventDTO> record) {
-        // 1. Validación de payload (Manejo de errores Criterio 6)
         if (record == null || record.value() == null) {
             log.warn("[KAFKA - audit-group] Registro nulo recibido. Ignorando mensaje de forma segura.");
             return;
@@ -51,7 +39,8 @@ public class KafkaAuditConsumer {
             if (atencionId == null && key != null) {
                 try {
                     atencionId = Long.valueOf(key);
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException ignored) {
+                }
             }
 
             if (atencionId == null) {
@@ -59,10 +48,10 @@ public class KafkaAuditConsumer {
                 return;
             }
 
-            // 2. Procesamiento y Persistencia desacoplada
             AuditoriaAtencion auditoria = new AuditoriaAtencion();
             auditoria.setAtencionId(atencionId);
-            auditoria.setUsuarioEmail(dto.getUsuarioResponsable() != null ? dto.getUsuarioResponsable() : "kafka-streaming@vidasalud.cl");
+            auditoria.setUsuarioEmail(
+                    dto.getUsuarioResponsable() != null ? dto.getUsuarioResponsable() : "kafka-streaming@vidasalud.cl");
             auditoria.setEstadoAnterior(dto.getEstadoAnterior() != null ? dto.getEstadoAnterior() : "INICIAL");
             auditoria.setEstadoNuevo(dto.getEstadoNuevo() != null ? dto.getEstadoNuevo() : "PROCESADO");
             auditoria.setFechaCambio(LocalDateTime.now());

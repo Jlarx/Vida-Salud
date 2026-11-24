@@ -26,8 +26,8 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672"    # AMQP principal
-      - "15672:15672"  # Panel administrativo HTTP
+      - "5672:5672" # AMQP principal
+      - "15672:15672" # Panel administrativo HTTP
     volumes:
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - rabbitmq_node1_data:/var/lib/rabbitmq
@@ -45,8 +45,8 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5673:5672"    # AMQP nodo 2
-      - "15673:15672"  # Panel administrativo HTTP nodo 2
+      - "5673:5672" # AMQP nodo 2
+      - "15673:15672" # Panel administrativo HTTP nodo 2
     volumes:
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - rabbitmq_node2_data:/var/lib/rabbitmq
@@ -168,7 +168,7 @@ services:
     networks:
       - vidasalud-net
 
-  # Inicializador automático de Tópicos Kafka (3 particiones, 3 réplicas)
+  # Inicializador de Tópicos Kafka (3 particiones, 3 réplicas)
   kafka-init-topics:
     image: apache/kafka:3.7.0
     container_name: kafka-init-topics

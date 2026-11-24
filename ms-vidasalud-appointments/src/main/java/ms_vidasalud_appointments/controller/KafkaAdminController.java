@@ -7,18 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Map;
 
-/**
- * Controlador REST para la gestión de infraestructura de Apache Kafka.
- * Cumple los criterios de la rúbrica (Criterio 3: 6% y Criterio 9: 6%):
- * - Endpoints para crear, listar y mantener tópicos y configuraciones.
- * - Inspección de tópicos y grupos de consumidores de manera controlada.
- */
 @RestController
-@RequestMapping({"/api/kafka", "/kafka", "/api/appointments/kafka", "/appointments/kafka"})
+@RequestMapping({ "/api/kafka", "/kafka", "/api/appointments/kafka", "/appointments/kafka" })
 public class KafkaAdminController {
 
     private final KafkaAdminService kafkaAdminService;
@@ -39,8 +32,7 @@ public class KafkaAdminController {
                 request.getTopicName(),
                 request.getPartitions(),
                 request.getReplicationFactor(),
-                request.getRetentionMs()
-        );
+                request.getRetentionMs());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Tópico Kafka '" + request.getTopicName() + "' creado con " +
                         request.getPartitions() + " particiones y " +

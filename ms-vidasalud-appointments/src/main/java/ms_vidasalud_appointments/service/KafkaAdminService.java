@@ -6,17 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.stereotype.Service;
-
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-/**
- * Servicio de administración programática de Kafka.
- * Cumple los criterios de la rúbrica:
- * - Creación, listado y mantenimiento de tópicos con configuraciones básicas (6%).
- * - Operaciones para crear, actualizar e inspeccionar tópicos y grupos de consumidores (6%).
- */
 @Service
 public class KafkaAdminService {
 
@@ -34,7 +27,8 @@ public class KafkaAdminService {
     public List<Map<String, Object>> listTopics() {
         try (AdminClient client = createAdminClient()) {
             Set<String> topicNames = client.listTopics().names().get(10, TimeUnit.SECONDS);
-            Map<String, TopicDescription> descriptions = client.describeTopics(topicNames).allTopicNames().get(10, TimeUnit.SECONDS);
+            Map<String, TopicDescription> descriptions = client.describeTopics(topicNames).allTopicNames().get(10,
+                    TimeUnit.SECONDS);
 
             List<Map<String, Object>> result = new ArrayList<>();
             for (Map.Entry<String, TopicDescription> entry : descriptions.entrySet()) {
@@ -57,11 +51,11 @@ public class KafkaAdminService {
             if (retentionMs != null) {
                 newTopic.configs(Map.of(
                         TopicConfig.RETENTION_MS_CONFIG, String.valueOf(retentionMs),
-                        TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE
-                ));
+                        TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE));
             }
             client.createTopics(Collections.singleton(newTopic)).all().get(10, TimeUnit.SECONDS);
-            log.info("Tópico Kafka '{}' creado exitosamente con {} particiones y {} réplicas", topicName, partitions, replicationFactor);
+            log.info("Tópico Kafka '{}' creado exitosamente con {} particiones y {} réplicas", topicName, partitions,
+                    replicationFactor);
         } catch (Exception e) {
             log.error("Error creando tópico '{}': {}", topicName, e.getMessage());
             throw new RuntimeException("Error al crear tópico: " + e.getMessage());
@@ -83,7 +77,8 @@ public class KafkaAdminService {
             Collection<ConsumerGroupListing> listings = client.listConsumerGroups().all().get(10, TimeUnit.SECONDS);
             List<String> groupIds = listings.stream().map(ConsumerGroupListing::groupId).collect(Collectors.toList());
 
-            Map<String, ConsumerGroupDescription> descriptions = client.describeConsumerGroups(groupIds).all().get(10, TimeUnit.SECONDS);
+            Map<String, ConsumerGroupDescription> descriptions = client.describeConsumerGroups(groupIds).all().get(10,
+                    TimeUnit.SECONDS);
 
             List<Map<String, Object>> result = new ArrayList<>();
             for (Map.Entry<String, ConsumerGroupDescription> entry : descriptions.entrySet()) {

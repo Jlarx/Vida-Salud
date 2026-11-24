@@ -12,13 +12,6 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Productor de eventos Apache Kafka tipado para el ciclo de vida de citas y alertas clínicas.
- * Cumple los criterios de la rúbrica (Criterio 2 y 4: 26% total):
- * - Uso de DTOs estructurados y tipados (CitaKafkaEventDTO y AlertaKafkaEventDTO).
- * - Particionamiento por clave atencionId para orden cronológico.
- * - Manejo adecuado de excepciones y logging preventivo.
- */
 @Component
 public class AtencionKafkaProducer {
 
@@ -39,10 +32,12 @@ public class AtencionKafkaProducer {
     public void publishCitaEvent(String atencionId, AuditoriaEvent event) {
         CitaKafkaEventDTO dto = CitaKafkaEventDTO.builder()
                 .atencionId(event.getAtencionId())
+                .pacienteEmail(event.getUsuarioEmail())
                 .usuarioResponsable(event.getUsuarioEmail())
                 .estadoAnterior(event.getEstadoAnterior())
                 .estadoNuevo(event.getEstadoNuevo())
-                .timestamp(event.getFechaCambio() != null ? event.getFechaCambio().toString() : LocalDateTime.now().toString())
+                .timestamp(event.getFechaCambio() != null ? event.getFechaCambio().toString()
+                        : LocalDateTime.now().toString())
                 .build();
         publishCitaDTO(atencionId, dto);
     }
