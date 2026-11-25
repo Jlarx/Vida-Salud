@@ -35,6 +35,11 @@ ensure_swap() {
 start_all() {
     ensure_swap
     
+    echo -e "${YELLOW}>> Sincronizando código con GitHub (rama main)...${NC}"
+    git reset --hard origin/main 2>/dev/null || true
+    git pull origin main 2>/dev/null || true
+    chmod -R +x . 2>/dev/null || true
+
     # Asegurar mapeo de hostnames Kafka en /etc/hosts
     grep -q "kafka-1" /etc/hosts 2>/dev/null || echo "127.0.0.1 kafka-1 kafka-2 kafka-3" | sudo tee -a /etc/hosts >/dev/null 2>&1 || true
 
