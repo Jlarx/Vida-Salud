@@ -20,7 +20,7 @@ apiClient.interceptors.request.use(async (config) => {
 
         if (activeAccount) {
             const tokenResponse = await msalInstance.acquireTokenSilent({
-                ...loginRequest,
+                scopes: loginRequest.scopes,
                 account: activeAccount
             });
 
