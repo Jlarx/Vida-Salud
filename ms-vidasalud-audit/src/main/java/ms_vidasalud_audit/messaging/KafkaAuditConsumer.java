@@ -1,5 +1,7 @@
 package ms_vidasalud_audit.messaging;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import ms_vidasalud_audit.dto.CitaKafkaEventDTO;
 import ms_vidasalud_audit.entity.AuditoriaAtencion;
 import ms_vidasalud_audit.repository.AuditoriaAtencionRepository;
@@ -8,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+
 import java.time.LocalDateTime;
 
 @Component
@@ -16,25 +19,29 @@ public class KafkaAuditConsumer {
     private static final Logger log = LoggerFactory.getLogger(KafkaAuditConsumer.class);
 
     private final AuditoriaAtencionRepository repository;
+    private final ObjectMapper objectMapper;
 
     public KafkaAuditConsumer(AuditoriaAtencionRepository repository) {
         this.repository = repository;
+        this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     }
 
     @KafkaListener(topics = "${kafka.topic.citas:vidasalud-citas}", groupId = "audit-group")
-    public void consumeCitaEvent(ConsumerRecord<String, CitaKafkaEventDTO> record) {
+    public void consumeCitaEvent(ConsumerRecord<String, String> record) {
         if (record == null || record.value() == null) {
             log.warn("[KAFKA - audit-group] Registro nulo recibido. Ignorando mensaje de forma segura.");
             return;
         }
 
         String key = record.key();
-        CitaKafkaEventDTO dto = record.value();
+        String jsonValue = record.value();
 
         log.info("[KAFKA - audit-group] Consumiendo evento en Partición: {}, Offset: {}, Key: {}",
                 record.partition(), record.offset(), key);
 
         try {
+            CitaKafkaEventDTO dto = objectMapper.readValue(jsonValue, CitaKafkaEventDTO.class);
+
             Long atencionId = dto.getAtencionId();
             if (atencionId == null && key != null) {
                 try {
