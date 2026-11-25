@@ -87,6 +87,16 @@ start_service_step() {
     local logfile="$4"
     local step_num="$5"
 
+    # Si el puerto ya responde activamente, lo dejamos corriendo
+    if nc -z localhost $port 2>/dev/null || curl -s --connect-timeout 1 http://localhost:$port >/dev/null 2>&1; then
+        echo -e "   [${step_num}/5] ${name} (Puerto ${port})... ${GREEN}ONLINE${NC} (ya estaba activo)"
+        return 0
+    fi
+
+    # Si no respondía, detener proceso anterior de este servicio
+    pkill -9 -f "$jar_dir" 2>/dev/null || true
+    sleep 1
+
     local jar=$(ls $jar_dir/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
     if [ -z "$jar" ] || [ ! -f "$jar" ]; then
         echo -e "   ${CYAN}>> Compilando ejecutable para $name...${NC}"
@@ -98,7 +108,7 @@ start_service_step() {
     nohup java -Xms64m -Xmx160m -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -jar "$jar" > "$logfile" 2>&1 &
 
     local is_up=false
-    for i in {1..35}; do
+    for i in {1..60}; do
         if nc -z localhost $port 2>/dev/null || curl -s --connect-timeout 1 http://localhost:$port >/dev/null 2>&1; then
             is_up=true
             echo -e "${GREEN}ONLINE${NC} (en ${i}s)"
@@ -131,18 +141,13 @@ launch_services() {
 
 fast_start() {
     echo -e "${CYAN}==============================================================================${NC}"
-    echo -e "${BOLD}${GREEN}  ⚡ INICIO RÁPIDO DE VIDASALUD (Listo en ~30 segundos) ${NC}"
+    echo -e "${BOLD}${GREEN}  ⚡ INICIO RÁPIDO DE VIDASALUD ${NC}"
     echo -e "${CYAN}==============================================================================${NC}"
     
     echo -e "${YELLOW}>> Sincronizando repositorio con GitHub...${NC}"
     git reset --hard origin/main 2>/dev/null || true
     git pull origin main 2>/dev/null || true
     chmod -R +x . 2>/dev/null || true
-
-    echo -e "${YELLOW}>> Deteniendo instancias previas de Java si existen...${NC}"
-    pkill -9 -f 'ms-vidasalud' 2>/dev/null || true
-    pkill -9 -f 'ms_vidasalud' 2>/dev/null || true
-    sleep 1
 
     start_infra
     launch_services
