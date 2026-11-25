@@ -32,59 +32,44 @@ ensure_swap() {
     fi
 }
 
-start_all() {
+start_infra() {
     ensure_swap
-    
-    echo -e "${YELLOW}>> Sincronizando código con GitHub (rama main)...${NC}"
-    git reset --hard origin/main 2>/dev/null || true
-    git pull origin main 2>/dev/null || true
-    chmod -R +x . 2>/dev/null || true
 
     # Asegurar mapeo de hostnames Kafka en /etc/hosts
     grep -q "kafka-1" /etc/hosts 2>/dev/null || echo "127.0.0.1 kafka-1 kafka-2 kafka-3" | sudo tee -a /etc/hosts >/dev/null 2>&1 || true
 
-    echo -e "${YELLOW}>> 1/4 Deteniendo instancias previas de microservicios...${NC}"
-    pkill -9 -f 'ms-vidasalud' 2>/dev/null || true
-    pkill -9 -f 'ms_vidasalud' 2>/dev/null || true
-    sleep 2
-
-    # Asegurar swap si no existe para evitar OOM Killer
-    if [ $(free -m | awk '/^Swap:/ {print $2}') -eq 0 ] 2>/dev/null; then
-        echo -e "${CYAN}>> Configurando 2GB de Swap para garantizar estabilidad de RAM...${NC}"
-        sudo fallocate -l 2G /swapfile 2>/dev/null && sudo chmod 600 /swapfile && sudo mkswap /swapfile 2>/dev/null && sudo swapon /swapfile 2>/dev/null || true
-    fi
-
-    echo -e "${YELLOW}>> 2/4 Levantando Docker (Postgres, RabbitMQ Cluster, Kafka KRaft, Kafka-UI)...${NC}"
+    echo -e "${YELLOW}>> Levantando contenedores Docker (Postgres, RabbitMQ Cluster, Kafka KRaft, Kafka-UI)...${NC}"
     docker compose -f infra/docker-compose.yml up -d --remove-orphans
 
-    echo -e "${YELLOW}>> Esperando que PostgreSQL y el clúster Kafka KRaft estén listos...${NC}"
+    echo -e "${YELLOW}>> Verificando PostgreSQL y Clúster Kafka...${NC}"
     for i in {1..20}; do
         if docker exec postgres-vidasalud pg_isready -U postgres >/dev/null 2>&1; then
             break
         fi
-        sleep 2
+        sleep 1
     done
 
-    # Creación explícita de todas las bases de datos requeridas
+    # Creación explícita de todas las bases de datos requeridas si no existen
     docker exec -i postgres-vidasalud psql -U postgres -c "CREATE DATABASE vidasalud_catalog;" 2>/dev/null || true
     docker exec -i postgres-vidasalud psql -U postgres -c "CREATE DATABASE vidasalud_appointments;" 2>/dev/null || true
     docker exec -i postgres-vidasalud psql -U postgres -c "CREATE DATABASE vidasalud_audit;" 2>/dev/null || true
     docker exec -i postgres-vidasalud psql -U postgres -c "CREATE DATABASE vidasalud_report;" 2>/dev/null || true
-    echo -e "${GREEN}>> Bases de datos PostgreSQL verificadas y listas.${NC}"
 
     # Limpiar cola conflictiva en RabbitMQ si existía
     docker exec rabbitmq-node1 rabbitmqctl delete_queue notify.queue 2>/dev/null || true
 
     # Esperar sincronización de quórum Kafka
-    sleep 8
-    echo -e "${YELLOW}>> Configurando tópicos Kafka (3 particiones, 3 réplicas)...${NC}"
+    sleep 4
+    echo -e "${YELLOW}>> Verificando tópicos Kafka (3 particiones, 3 réplicas)...${NC}"
     docker exec kafka-1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-citas --partitions 3 --replication-factor 3 --config retention.ms=604800000 2>/dev/null || true
     docker exec kafka-1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-alertas --partitions 3 --replication-factor 3 --config retention.ms=604800000 2>/dev/null || true
     docker exec kafka-1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --alter --topic vidasalud-citas --partitions 3 2>/dev/null || true
     docker exec kafka-1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --alter --topic vidasalud-alertas --partitions 3 2>/dev/null || true
-    echo -e "${GREEN}>> Tópicos Kafka listos con 3 particiones y 3 réplicas.${NC}"
+    echo -e "${GREEN}>> Infraestructura Docker y Tópicos Kafka listos.${NC}"
+}
 
-    echo -e "${YELLOW}>> 3/4 Compilando microservicios individualmente...${NC}"
+compile_all() {
+    echo -e "${YELLOW}>> Compilando microservicios individualmente con Maven...${NC}"
     export MAVEN_OPTS="-Xmx160m"
     for ms in ms-vidasalud-catalog ms-vidasalud-appointments ms-vidasalud-audit ms-vidasalud-report ms-vidasalud-notify; do
         if [ -d "$ms" ]; then
@@ -93,48 +78,59 @@ start_all() {
         fi
     done
     echo -e "${GREEN}>> Todos los microservicios compilados exitosamente.${NC}"
+}
 
-    echo -e "${YELLOW}>> 4/4 Levantando microservicios en segundo plano (-Xmx180m)...${NC}"
+launch_services() {
+    echo -e "${YELLOW}>> Verificando ejecutables JAR de microservicios...${NC}"
+    for ms in ms-vidasalud-catalog ms-vidasalud-appointments ms-vidasalud-audit ms-vidasalud-report ms-vidasalud-notify; do
+        JAR=$(ls $ms/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
+        if [ -z "$JAR" ] || [ ! -f "$JAR" ]; then
+            echo -e "${CYAN}>> JAR no encontrado para $ms. Compilando...${NC}"
+            (cd "$ms" && chmod +x mvnw 2>/dev/null || true; ./mvnw clean package -DskipTests -q)
+        fi
+    done
+
+    echo -e "${YELLOW}>> Iniciando microservicios en segundo plano (-Xmx180m)...${NC}"
     
     JAR_CATALOG=$(ls ms-vidasalud-catalog/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
     nohup java -Xmx180m -jar "$JAR_CATALOG" > catalog.log 2>&1 &
     echo -e "   [1/5] Catálogo iniciado (Puerto 8081)"
-    sleep 7
+    sleep 3
 
     JAR_APPT=$(ls ms-vidasalud-appointments/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
     nohup java -Xmx180m -jar "$JAR_APPT" > appointments.log 2>&1 &
     echo -e "   [2/5] Citas iniciado (Puerto 8082)"
-    sleep 7
+    sleep 3
 
     JAR_AUDIT=$(ls ms-vidasalud-audit/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
     nohup java -Xmx180m -jar "$JAR_AUDIT" > audit.log 2>&1 &
     echo -e "   [3/5] Auditoría iniciado (Puerto 8083)"
-    sleep 5
+    sleep 3
 
     JAR_REPORT=$(ls ms-vidasalud-report/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
     nohup java -Xmx180m -jar "$JAR_REPORT" > report.log 2>&1 &
     echo -e "   [4/5] Reportes iniciado (Puerto 8084)"
-    sleep 5
+    sleep 3
 
     JAR_NOTIFY=$(ls ms-vidasalud-notify/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
     nohup java -Xmx180m -jar "$JAR_NOTIFY" > notify.log 2>&1 &
     echo -e "   [5/5] Notificaciones iniciado (Puerto 8085)"
 
     echo -e "${YELLOW}>> Esperando que los microservicios activen sus puertos (arranque progresivo)...${NC}"
-    for i in {1..45}; do
+    for i in {1..30}; do
         UP_COUNT=0
         for p in 8081 8082 8083 8084 8085; do
             if nc -z localhost $p 2>/dev/null || curl -s http://localhost:$p >/dev/null 2>&1; then
                 ((UP_COUNT++))
             fi
         done
-        echo -ne "   Progreso: ${UP_COUNT}/5 microservicios online (espera ${i}/45)...\r"
+        echo -ne "   Progreso: ${UP_COUNT}/5 microservicios online (espera ${i}/30)...\r"
         if [ "$UP_COUNT" -eq 5 ]; then
             echo ""
             echo -e "${GREEN}>> ✅ ¡LOS 5 MICROSERVICIOS ESTÁN ONLINE Y LISTOS! (5/5)${NC}"
             break
         fi
-        sleep 4
+        sleep 2
     done
     echo ""
 
@@ -150,7 +146,7 @@ start_all() {
             echo -e "   - Puerto $port ($name): ${RED}OFFLINE${NC} (Revisando $logfile)"
             if [ -f "$logfile" ]; then
                 echo -e "${CYAN}   --- Últimas líneas de $logfile ---${NC}"
-                tail -n 12 "$logfile" | sed 's/^/     /'
+                tail -n 8 "$logfile" | sed 's/^/     /'
                 echo -e "${CYAN}   ----------------------------------${NC}"
             fi
         fi
@@ -159,6 +155,45 @@ start_all() {
     echo ""
     echo -e "${GREEN}>> Grupos Consumidores Kafka Activos:${NC}"
     docker exec kafka-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka-1:9092 --list 2>/dev/null || true
+}
+
+fast_start() {
+    echo -e "${CYAN}==============================================================================${NC}"
+    echo -e "${BOLD}${GREEN}  ⚡ INICIO RÁPIDO DE VIDASALUD (Listo en ~30 segundos) ${NC}"
+    echo -e "${CYAN}==============================================================================${NC}"
+    
+    echo -e "${YELLOW}>> Sincronizando repositorio con GitHub...${NC}"
+    git reset --hard origin/main 2>/dev/null || true
+    git pull origin main 2>/dev/null || true
+    chmod -R +x . 2>/dev/null || true
+
+    echo -e "${YELLOW}>> Deteniendo instancias previas de Java si existen...${NC}"
+    pkill -9 -f 'ms-vidasalud' 2>/dev/null || true
+    pkill -9 -f 'ms_vidasalud' 2>/dev/null || true
+    sleep 1
+
+    start_infra
+    launch_services
+}
+
+rebuild_all() {
+    echo -e "${CYAN}==============================================================================${NC}"
+    echo -e "${BOLD}${YELLOW}  🔨 RECONSTRUCCIÓN COMPLETA (Maven + Docker + Microservicios) ${NC}"
+    echo -e "${CYAN}==============================================================================${NC}"
+    
+    echo -e "${YELLOW}>> Sincronizando código con GitHub...${NC}"
+    git reset --hard origin/main 2>/dev/null || true
+    git pull origin main 2>/dev/null || true
+    chmod -R +x . 2>/dev/null || true
+
+    echo -e "${YELLOW}>> Deteniendo instancias previas de microservicios...${NC}"
+    pkill -9 -f 'ms-vidasalud' 2>/dev/null || true
+    pkill -9 -f 'ms_vidasalud' 2>/dev/null || true
+    sleep 2
+
+    start_infra
+    compile_all
+    launch_services
 }
 
 stop_all() {
@@ -194,6 +229,9 @@ show_status() {
         fi
     done
     echo ""
+    echo -e "${BLUE}================ GRUPOS CONSUMIDORES KAFKA =================${NC}"
+    docker exec kafka-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka-1:9092 --list 2>/dev/null || true
+    echo ""
     echo -e "${BLUE}================ PRUEBA AWS API GATEWAY ===================${NC}"
     GW_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://zzyt3obhvf.execute-api.us-east-1.amazonaws.com/prod/catalog/boxes || echo "ERROR")
     echo -e "  Conexión API Gateway (/catalog/boxes): Código HTTP ${CYAN}${GW_CODE}${NC}"
@@ -222,6 +260,33 @@ show_logs() {
     esac
 }
 
+# Ejecución por argumentos directos (ej: ./deploy-ec2.sh fast)
+if [ -n "$1" ]; then
+    case "$1" in
+        fast|quick|start)
+            fast_start
+            exit 0
+            ;;
+        rebuild|full)
+            rebuild_all
+            exit 0
+            ;;
+        stop)
+            stop_all
+            exit 0
+            ;;
+        status)
+            show_status
+            exit 0
+            ;;
+        logs)
+            show_logs
+            exit 0
+            ;;
+    esac
+fi
+
+# Menú interactivo
 clear || true
 echo -e "${BLUE}==============================================================================${NC}"
 echo -e "${BOLD}${GREEN}        🏥 VidaSalud - Centro de Control de Despliegue en AWS EC2     ${NC}"
@@ -229,25 +294,29 @@ echo -e "${BLUE}================================================================
 echo -e "IP Pública Detectada: ${CYAN}${PUBLIC_IP}${NC}"
 echo ""
 echo -e "${BOLD}Seleccione una opción:${NC}"
-echo -e "  ${GREEN}1)${NC} ${BOLD}INICIAR TODO${NC} (Compilar + Docker + Bases de Datos + 5 Microservicios)"
-echo -e "  ${GREEN}2)${NC} ${BOLD}DETENER TODO Y LIMPIAR${NC} (Liberar RAM y detener procesos)"
-echo -e "  ${GREEN}3)${NC} ${BOLD}VER ESTADO Y PUERTOS${NC} (Health Check y prueba de API Gateway)"
-echo -e "  ${GREEN}4)${NC} ${BOLD}VER LOGS EN TIEMPO REAL${NC}"
+echo -e "  ${GREEN}1)${NC} ${BOLD}⚡ INICIO RÁPIDO${NC} (Levantar Docker + 5 Microservicios en ~30s - ¡Recomendado!)"
+echo -e "  ${GREEN}2)${NC} ${BOLD}🔨 RECOMPILAR E INICIAR TODO${NC} (Compilación limpia con Maven)"
+echo -e "  ${GREEN}3)${NC} ${BOLD}🛑 DETENER TODO Y LIMPIAR${NC} (Liberar RAM y detener procesos)"
+echo -e "  ${GREEN}4)${NC} ${BOLD}📊 VER ESTADO Y PUERTOS${NC} (Health Check y prueba de API Gateway)"
+echo -e "  ${GREEN}5)${NC} ${BOLD}📜 VER LOGS EN TIEMPO REAL${NC}"
 echo -e "  ${RED}q)${NC} Salir"
 echo ""
-read -p "Ingrese una opción [1-4/q]: " OPTION
+read -p "Ingrese una opción [1-5/q]: " OPTION
 
 case $OPTION in
     1)
-        start_all
+        fast_start
         ;;
     2)
-        stop_all
+        rebuild_all
         ;;
     3)
-        show_status
+        stop_all
         ;;
     4)
+        show_status
+        ;;
+    5)
         show_logs
         ;;
     q|Q)
