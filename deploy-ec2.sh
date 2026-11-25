@@ -80,80 +80,52 @@ compile_all() {
     echo -e "${GREEN}>> Todos los microservicios compilados exitosamente.${NC}"
 }
 
-launch_services() {
-    echo -e "${YELLOW}>> Verificando ejecutables JAR de microservicios...${NC}"
-    for ms in ms-vidasalud-catalog ms-vidasalud-appointments ms-vidasalud-audit ms-vidasalud-report ms-vidasalud-notify; do
-        JAR=$(ls $ms/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
-        if [ -z "$JAR" ] || [ ! -f "$JAR" ]; then
-            echo -e "${CYAN}>> JAR no encontrado para $ms. Compilando...${NC}"
-            (cd "$ms" && chmod +x mvnw 2>/dev/null || true; ./mvnw clean package -DskipTests -q)
-        fi
-    done
+start_service_step() {
+    local name="$1"
+    local port="$2"
+    local jar_dir="$3"
+    local logfile="$4"
+    local step_num="$5"
 
-    echo -e "${YELLOW}>> Iniciando microservicios en segundo plano (-Xmx180m)...${NC}"
-    
-    JAR_CATALOG=$(ls ms-vidasalud-catalog/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
-    nohup java -Xmx180m -jar "$JAR_CATALOG" > catalog.log 2>&1 &
-    echo -e "   [1/5] Catálogo iniciado (Puerto 8081)"
-    sleep 3
+    local jar=$(ls $jar_dir/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
+    if [ -z "$jar" ] || [ ! -f "$jar" ]; then
+        echo -e "   ${CYAN}>> Compilando ejecutable para $name...${NC}"
+        (cd "$jar_dir" && chmod +x mvnw 2>/dev/null || true; ./mvnw clean package -DskipTests -q)
+        jar=$(ls $jar_dir/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
+    fi
 
-    JAR_APPT=$(ls ms-vidasalud-appointments/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
-    nohup java -Xmx180m -jar "$JAR_APPT" > appointments.log 2>&1 &
-    echo -e "   [2/5] Citas iniciado (Puerto 8082)"
-    sleep 3
+    echo -ne "   [${step_num}/5] Iniciando ${name} (Puerto ${port})... "
+    nohup java -Xms64m -Xmx160m -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -jar "$jar" > "$logfile" 2>&1 &
 
-    JAR_AUDIT=$(ls ms-vidasalud-audit/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
-    nohup java -Xmx180m -jar "$JAR_AUDIT" > audit.log 2>&1 &
-    echo -e "   [3/5] Auditoría iniciado (Puerto 8083)"
-    sleep 3
-
-    JAR_REPORT=$(ls ms-vidasalud-report/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
-    nohup java -Xmx180m -jar "$JAR_REPORT" > report.log 2>&1 &
-    echo -e "   [4/5] Reportes iniciado (Puerto 8084)"
-    sleep 3
-
-    JAR_NOTIFY=$(ls ms-vidasalud-notify/target/*SNAPSHOT.jar 2>/dev/null | grep -v '\.original' | head -n 1)
-    nohup java -Xmx180m -jar "$JAR_NOTIFY" > notify.log 2>&1 &
-    echo -e "   [5/5] Notificaciones iniciado (Puerto 8085)"
-
-    echo -e "${YELLOW}>> Esperando que los microservicios activen sus puertos (arranque progresivo)...${NC}"
-    for i in {1..30}; do
-        UP_COUNT=0
-        for p in 8081 8082 8083 8084 8085; do
-            if nc -z localhost $p 2>/dev/null || curl -s http://localhost:$p >/dev/null 2>&1; then
-                ((UP_COUNT++))
-            fi
-        done
-        echo -ne "   Progreso: ${UP_COUNT}/5 microservicios online (espera ${i}/30)...\r"
-        if [ "$UP_COUNT" -eq 5 ]; then
-            echo ""
-            echo -e "${GREEN}>> ✅ ¡LOS 5 MICROSERVICIOS ESTÁN ONLINE Y LISTOS! (5/5)${NC}"
+    local is_up=false
+    for i in {1..35}; do
+        if nc -z localhost $port 2>/dev/null || curl -s --connect-timeout 1 http://localhost:$port >/dev/null 2>&1; then
+            is_up=true
+            echo -e "${GREEN}ONLINE${NC} (en ${i}s)"
             break
         fi
-        sleep 2
+        sleep 1
     done
-    echo ""
 
-    echo -e "${YELLOW}>> Estado actual de los servicios tras la espera:${NC}"
-    for item in "8081:Catálogo:catalog.log" "8082:Citas:appointments.log" "8083:Auditoría:audit.log" "8084:Reportes:report.log" "8085:Notificaciones:notify.log"; do
-        port="${item%%:*}"
-        rest="${item#*:}"
-        name="${rest%%:*}"
-        logfile="${rest#*:}"
-        if nc -z localhost $port 2>/dev/null || curl -s http://localhost:$port >/dev/null 2>&1; then
-            echo -e "   - Puerto $port ($name): ${GREEN}ONLINE${NC}"
-        else
-            echo -e "   - Puerto $port ($name): ${RED}OFFLINE${NC} (Revisando $logfile)"
-            if [ -f "$logfile" ]; then
-                echo -e "${CYAN}   --- Últimas líneas de $logfile ---${NC}"
-                tail -n 8 "$logfile" | sed 's/^/     /'
-                echo -e "${CYAN}   ----------------------------------${NC}"
-            fi
-        fi
-    done
+    if [ "$is_up" = false ]; then
+        echo -e "${RED}OFFLINE${NC}"
+        echo -e "${CYAN}   --- Últimas líneas de $logfile ---${NC}"
+        tail -n 8 "$logfile" | sed 's/^/     /'
+        echo -e "${CYAN}   ----------------------------------${NC}"
+    fi
+}
+
+launch_services() {
+    echo -e "${YELLOW}>> Iniciando microservicios secuencialmente (evita sobrecarga de CPU/RAM)...${NC}"
+    start_service_step "Catálogo" 8081 "ms-vidasalud-catalog" "catalog.log" 1
+    start_service_step "Citas" 8082 "ms-vidasalud-appointments" "appointments.log" 2
+    start_service_step "Auditoría" 8083 "ms-vidasalud-audit" "audit.log" 3
+    start_service_step "Reportes" 8084 "ms-vidasalud-report" "report.log" 4
+    start_service_step "Notificaciones" 8085 "ms-vidasalud-notify" "notify.log" 5
 
     echo ""
     echo -e "${GREEN}>> Grupos Consumidores Kafka Activos:${NC}"
+    sleep 3
     docker exec kafka-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka-1:9092 --list 2>/dev/null || true
 }
 
