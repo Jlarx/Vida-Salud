@@ -56,19 +56,19 @@ services:
     networks:
       - vidasalud-net
 
-  # Coordinador Zookeeper (Requerimiento explícito de rúbrica de evaluación)
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: zookeeper
-    hostname: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    restart: unless-stopped
-    networks:
-      - vidasalud-net
+  # Coordinador Zookeeper no requerido (KRaft nativo activo)
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.5.0
+  #   container_name: zookeeper
+  #   hostname: zookeeper
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   ports:
+  #     - "2181:2181"
+  #   restart: unless-stopped
+  #   networks:
+  #     - vidasalud-net
 
   # Kafka Broker 1 (KRaft Mode)
   kafka-1:
@@ -92,6 +92,7 @@ services:
       KAFKA_LOG_RETENTION_HOURS: 168
       KAFKA_LOG_RETENTION_MS: 604800000
       CLUSTER_ID: '4L622nShTUiBenDuA1Z-jg'
+      KAFKA_HEAP_OPTS: '-Xmx160m -Xms160m'
     volumes:
       - kafka1_data:/var/lib/kafka/data
     restart: unless-stopped
@@ -118,6 +119,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       CLUSTER_ID: '4L622nShTUiBenDuA1Z-jg'
+      KAFKA_HEAP_OPTS: '-Xmx160m -Xms160m'
     volumes:
       - kafka2_data:/var/lib/kafka/data
     restart: unless-stopped
@@ -144,6 +146,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       CLUSTER_ID: '4L622nShTUiBenDuA1Z-jg'
+      KAFKA_HEAP_OPTS: '-Xmx160m -Xms160m'
     volumes:
       - kafka3_data:/var/lib/kafka/data
     restart: unless-stopped
