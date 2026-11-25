@@ -50,9 +50,9 @@ start_all() {
     fi
 
     echo -e "${YELLOW}>> 2/4 Levantando Docker (Postgres, RabbitMQ Cluster, Kafka KRaft, Kafka-UI)...${NC}"
-    docker compose -f infra/docker-compose.yml up -d
+    docker compose -f infra/docker-compose.yml up -d --remove-orphans
 
-    echo -e "${YELLOW}>> Esperando que PostgreSQL esté listo...${NC}"
+    echo -e "${YELLOW}>> Esperando que PostgreSQL y el clúster Kafka KRaft estén listos...${NC}"
     for i in {1..20}; do
         if docker exec postgres-vidasalud pg_isready -U postgres >/dev/null 2>&1; then
             break
@@ -67,7 +67,20 @@ start_all() {
     docker exec -i postgres-vidasalud psql -U postgres -c "CREATE DATABASE vidasalud_report;" 2>/dev/null || true
     echo -e "${GREEN}>> Bases de datos PostgreSQL verificadas y listas.${NC}"
 
+    # Limpiar cola conflictiva en RabbitMQ si existía
+    docker exec rabbitmq-node1 rabbitmqctl delete_queue notify.queue 2>/dev/null || true
+
+    # Esperar sincronización de quórum Kafka
+    sleep 8
+    echo -e "${YELLOW}>> Configurando tópicos Kafka (3 particiones, 3 réplicas)...${NC}"
+    docker exec kafka-1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-citas --partitions 3 --replication-factor 3 --config retention.ms=604800000 2>/dev/null || true
+    docker exec kafka-1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --create --if-not-exists --topic vidasalud-alertas --partitions 3 --replication-factor 3 --config retention.ms=604800000 2>/dev/null || true
+    docker exec kafka-1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --alter --topic vidasalud-citas --partitions 3 2>/dev/null || true
+    docker exec kafka-1 /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9092 --alter --topic vidasalud-alertas --partitions 3 2>/dev/null || true
+    echo -e "${GREEN}>> Tópicos Kafka listos con 3 particiones y 3 réplicas.${NC}"
+
     echo -e "${YELLOW}>> 3/4 Compilando microservicios individualmente...${NC}"
+    export MAVEN_OPTS="-Xmx160m"
     for ms in ms-vidasalud-catalog ms-vidasalud-appointments ms-vidasalud-audit ms-vidasalud-report ms-vidasalud-notify; do
         if [ -d "$ms" ]; then
             echo -e "${CYAN}>> Compilando $ms...${NC}"
@@ -134,6 +147,10 @@ start_all() {
             fi
         fi
     done
+
+    echo ""
+    echo -e "${GREEN}>> Grupos Consumidores Kafka Activos:${NC}"
+    docker exec kafka-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka-1:9092 --list 2>/dev/null || true
 }
 
 stop_all() {
