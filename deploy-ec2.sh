@@ -115,20 +115,23 @@ start_all() {
     nohup java -Xmx180m -jar "$JAR_NOTIFY" > notify.log 2>&1 &
     echo -e "   [5/5] Notificaciones iniciado (Puerto 8085)"
 
-    echo -e "${YELLOW}>> Esperando que los microservicios activen sus puertos...${NC}"
-    for i in {1..30}; do
+    echo -e "${YELLOW}>> Esperando que los microservicios activen sus puertos (arranque progresivo)...${NC}"
+    for i in {1..45}; do
         UP_COUNT=0
         for p in 8081 8082 8083 8084 8085; do
             if nc -z localhost $p 2>/dev/null || curl -s http://localhost:$p >/dev/null 2>&1; then
                 ((UP_COUNT++))
             fi
         done
+        echo -ne "   Progreso: ${UP_COUNT}/5 microservicios online (espera ${i}/45)...\r"
         if [ "$UP_COUNT" -eq 5 ]; then
+            echo ""
             echo -e "${GREEN}>> ✅ ¡LOS 5 MICROSERVICIOS ESTÁN ONLINE Y LISTOS! (5/5)${NC}"
-            return 0
+            break
         fi
-        sleep 2
+        sleep 4
     done
+    echo ""
 
     echo -e "${YELLOW}>> Estado actual de los servicios tras la espera:${NC}"
     for item in "8081:Catálogo:catalog.log" "8082:Citas:appointments.log" "8083:Auditoría:audit.log" "8084:Reportes:report.log" "8085:Notificaciones:notify.log"; do
